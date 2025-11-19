@@ -133,8 +133,13 @@
                 linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
             background-size: 20px 20px;
+            /* OTIMIZAÇÕES DE PERFORMANCE CRÍTICAS */
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
         }
 
+        /* OTIMIZAÇÕES DE PERFORMANCE PARA DRAWFLOW */
         .drawflow .drawflow-node {
             border-radius: 10px;
             border: 2px solid;
@@ -143,10 +148,25 @@
             min-width: 150px;
             text-align: center;
             font-weight: 500;
-            transition: all 0.3s ease;
+            /* Hardware acceleration */
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            pointer-events: auto;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .drawflow .drawflow-node:hover {
+        /* Desabilitar hover pesado durante drag */
+        .drawflow.dragging .drawflow-node {
+            transition: none !important;
+        }
+
+        .drawflow.dragging .drawflow-node:hover {
+            transform: none !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+        }
+
+        .drawflow .drawflow-node:not(.dragging):hover {
             transform: scale(1.05);
             box-shadow: 0 6px 12px rgba(0,0,0,0.25);
         }
@@ -176,6 +196,16 @@
         .drawflow-node.selected {
             box-shadow: 0 0 20px rgba(0,121,107,0.6);
             border-width: 3px;
+        }
+
+        /* Otimizar renderização de conexões SVG */
+        .drawflow svg {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+
+        .drawflow .connection .main-path {
+            transition: none;
         }
 
         #processo-nome {
@@ -326,15 +356,45 @@
 
     <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
     <script>
-        const id = document.getElementById("drawflow");
-        const editor = new Drawflow(id);
-        editor.start();
+        const drawflowContainer = document.getElementById("drawflow");
+        const editor = new Drawflow(drawflowContainer);
 
-        // Configurações do editor
+        // CONFIGURAÇÕES DE PERFORMANCE OTIMIZADAS
+        editor.start();
         editor.editor_mode = 'edit';
         editor.reroute = true;
+        editor.force_first_input = false;
+        editor.line_path = 1; // Linha reta - mais rápida que curvas Bezier
+        editor.curvature = 0; // Desabilitar curvatura
 
         let currentData = null;
+        let isDragging = false;
+
+        // Otimizar durante drag - desabilitar hover pesado
+        editor.on('nodeSelected', function(id) {
+            if (!isDragging) {
+                isDragging = true;
+                drawflowContainer.classList.add('dragging');
+            }
+        });
+
+        editor.on('nodeUnselected', function(id) {
+            if (isDragging) {
+                setTimeout(() => {
+                    isDragging = false;
+                    drawflowContainer.classList.remove('dragging');
+                }, 100);
+            }
+        });
+
+        // Debounce para redraw durante movimento - 60fps
+        let redrawTimeout;
+        editor.on('nodeMoved', function(id) {
+            clearTimeout(redrawTimeout);
+            redrawTimeout = setTimeout(() => {
+                editor.updateConnectionNodes('node-' + id);
+            }, 16); // ~60fps
+        });
 
         async function uploadFile() {
             const fileInput = document.getElementById('excel_file');
@@ -384,7 +444,7 @@
                 document.getElementById('controls').style.display = 'block';
 
                 // Mostrar mensagem de sucesso
-                showSuccess('✓ Fluxograma gerado com sucesso! Arraste os elementos para reorganizar.');
+                showSuccess('✓ Fluxograma gerado! Arraste os nós para reorganizar (performance otimizada).');
 
             } catch (error) {
                 showError('Erro ao gerar fluxograma: ' + error.message);
@@ -398,7 +458,6 @@
             errorEl.textContent = '❌ ' + message;
             errorEl.classList.add('active');
 
-            // Auto-hide após 5 segundos
             setTimeout(() => {
                 errorEl.classList.remove('active');
             }, 5000);
@@ -409,13 +468,16 @@
             successEl.textContent = message;
             successEl.classList.add('active');
 
-            // Auto-hide após 5 segundos
             setTimeout(() => {
                 successEl.classList.remove('active');
             }, 5000);
         }
 
         function renderFluxograma(data) {
+            // OTIMIZAÇÃO CRÍTICA: Suspender renderização durante batch
+            drawflowContainer.style.pointerEvents = 'none';
+            drawflowContainer.style.opacity = '0.7';
+
             // Limpa fluxograma anterior
             editor.clear();
 
@@ -427,7 +489,7 @@
             // Mapear IDs originais para IDs do Drawflow
             const nodeIdMap = {};
 
-            // Adiciona nós
+            // BATCH RENDERING: Adicionar todos os nós sem redesenhar
             data.nodes.forEach(node => {
                 const nodeHtml = `<div>${node.name}</div>`;
                 const drawflowNodeId = editor.addNode(
@@ -438,13 +500,14 @@
                     node.pos_y,
                     node.type,
                     {},
-                    nodeHtml
+                    nodeHtml,
+                    false // NÃO redesenhar a cada nó
                 );
 
                 nodeIdMap[node.id] = drawflowNodeId;
             });
 
-            // Adiciona conexões
+            // BATCH RENDERING: Adicionar todas as conexões sem redesenhar
             data.connections.forEach(conn => {
                 const fromId = nodeIdMap[conn.from];
                 const toId = nodeIdMap[conn.to];
@@ -459,8 +522,16 @@
                 }
             });
 
-            // Centralizar visualização
-            editor.zoom_reset();
+            // Redesenhar APENAS UMA VEZ após todos os elementos
+            setTimeout(() => {
+                drawflowContainer.style.pointerEvents = 'auto';
+                drawflowContainer.style.opacity = '1';
+
+                // Centralizar visualização com animação suave
+                requestAnimationFrame(() => {
+                    editor.zoom_reset();
+                });
+            }, 100);
         }
 
         function exportFluxograma() {
@@ -490,7 +561,7 @@
                 return;
             }
 
-            if (confirm('Tem certeza que deseja limpar o fluxograma? Esta ação não pode ser desfeita.')) {
+            if (confirm('Tem certeza que deseja limpar o fluxograma?')) {
                 editor.clear();
                 document.getElementById('processo-nome').textContent = '';
                 document.getElementById('processo-nome').style.display = 'none';
@@ -498,7 +569,7 @@
                 document.getElementById('excel_file').value = '';
                 currentData = null;
 
-                showSuccess('✓ Fluxograma limpo com sucesso!');
+                showSuccess('✓ Fluxograma limpo!');
             }
         }
 
@@ -523,7 +594,7 @@
             }
         });
 
-        // Drag and drop de arquivo
+        // Drag and drop de arquivo otimizado
         const uploadSection = document.querySelector('.upload-section');
 
         uploadSection.addEventListener('dragover', (e) => {
