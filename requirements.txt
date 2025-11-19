@@ -2,4 +2,6 @@ flask
 pandas
 graphviz
 openpyxl
+xlrd
+chardet
 gunicorn
