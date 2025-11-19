@@ -15,76 +15,96 @@
         body {
             font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            padding: 20px;
-            min-height: 100vh;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
 
         h1 {
             color: #00796B;
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 2.5em;
+            margin: 10px 0;
+            font-size: 2em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
 
         .container {
-            max-width: 1600px;
-            margin: 0 auto;
+            width: 100%;
+            height: 100%;
             background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            flex-shrink: 0;
+            padding: 15px 20px;
+            background: white;
+            border-bottom: 2px solid #ddd;
         }
 
         .info {
             background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            padding: 20px;
+            padding: 10px 15px;
             border-radius: 8px;
-            margin: 20px 0;
+            margin: 10px 0;
             border-left: 5px solid #00796B;
+            font-size: 0.9em;
         }
 
         .info h3 {
             color: #00796B;
-            margin-bottom: 10px;
-            font-size: 1.2em;
+            margin-bottom: 5px;
+            font-size: 1em;
+        }
+
+        .info-toggle {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .info-content {
+            margin-top: 5px;
+        }
+
+        .info-content.collapsed {
+            display: none;
         }
 
         .info ul {
             list-style-position: inside;
             color: #555;
-            margin-top: 10px;
+            margin-top: 5px;
+            font-size: 0.85em;
         }
 
         .info ul li {
-            margin: 5px 0;
-            padding-left: 10px;
+            margin: 3px 0;
         }
 
         .upload-section {
-            margin: 30px 0;
-            padding: 25px;
+            padding: 15px;
             background: #f9f9f9;
             border-radius: 8px;
             text-align: center;
             border: 2px dashed #00796B;
+            margin: 10px 0;
         }
 
         .upload-section h3 {
             color: #00796B;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            font-size: 1em;
         }
 
         input[type="file"] {
-            margin: 15px 0;
-            padding: 12px;
+            margin: 10px 0;
+            padding: 10px;
             border: 2px solid #00796B;
             border-radius: 6px;
             background: white;
             cursor: pointer;
             font-size: 14px;
-            width: 100%;
-            max-width: 400px;
         }
 
         input[type="file"]:hover {
@@ -95,14 +115,14 @@
             background: linear-gradient(135deg, #00796B 0%, #004D40 100%);
             color: white;
             border: none;
-            padding: 14px 35px;
+            padding: 10px 25px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin: 5px;
+            margin: 3px;
         }
 
         button:hover {
@@ -122,11 +142,9 @@
         }
 
         #drawflow {
+            flex: 1;
             width: 100%;
-            height: 700px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            margin-top: 20px;
+            border: none;
             position: relative;
             background: #fafafa;
             background-image: 
@@ -138,7 +156,7 @@
             backface-visibility: hidden;
         }
 
-        /* ESTILOS OTIMIZADOS PARA DRAWFLOW */
+        /* ESTILOS DOS NÓS */
         .drawflow .drawflow-node {
             border: 2px solid;
             padding: 15px;
@@ -153,7 +171,6 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        /* INÍCIO E FIM COMO CÍRCULOS MENORES - 60x60px */
         .drawflow .drawflow-node.start,
         .drawflow .drawflow-node.end {
             border-radius: 50% !important;
@@ -171,7 +188,6 @@
             font-size: 11px;
         }
 
-        /* ATIVIDADES - Retângulos arredondados */
         .drawflow .drawflow-node.activity {
             border-radius: 10px;
             background: linear-gradient(135deg, #00AE9D 0%, #008F81 100%);
@@ -180,7 +196,6 @@
             font-weight: bold;
         }
 
-        /* PROCEDIMENTOS - Retângulos */
         .drawflow .drawflow-node.procedure {
             border-radius: 10px;
             background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
@@ -189,7 +204,6 @@
             font-size: 13px;
         }
 
-        /* CONECTORES CENTRALIZADOS NAS LATERAIS - Bolinhas menores (8px) */
         .drawflow .drawflow-node .input,
         .drawflow .drawflow-node .output {
             width: 8px !important;
@@ -200,28 +214,24 @@
             position: absolute;
         }
 
-        /* Input centralizado no MEIO da ESQUERDA */
         .drawflow .drawflow-node .input {
             left: -4px;
             top: 50%;
             transform: translateY(-50%);
         }
 
-        /* Output centralizado no MEIO da DIREITA */
         .drawflow .drawflow-node .output {
             right: -4px;
             top: 50%;
             transform: translateY(-50%);
         }
 
-        /* Hover nos conectores */
         .drawflow .drawflow-node .input:hover,
         .drawflow .drawflow-node .output:hover {
             background: #004D40;
             transform: translateY(-50%) scale(1.3);
         }
 
-        /* Desabilitar hover pesado durante drag */
         .drawflow.dragging .drawflow-node {
             transition: none !important;
         }
@@ -241,7 +251,6 @@
             border-width: 3px;
         }
 
-        /* SETAS VERDES COM LINHAS RETAS */
         .drawflow svg {
             will-change: transform;
             transform: translateZ(0);
@@ -263,42 +272,42 @@
         }
 
         #processo-nome {
-            font-size: 24px;
+            font-size: 18px;
             font-weight: bold;
             color: #00796B;
-            margin: 20px 0;
-            text-align: center;
-            padding: 15px;
+            padding: 10px;
             background: #f0f9f8;
-            border-radius: 8px;
-            border-left: 5px solid #00796B;
+            text-align: center;
+            border-bottom: 2px solid #00796B;
             display: none;
         }
 
         .controls {
-            margin: 20px 0;
+            padding: 10px;
             text-align: center;
-            padding: 15px;
             background: #f9f9f9;
-            border-radius: 8px;
+            border-bottom: 1px solid #ddd;
             display: none;
         }
 
         .controls button {
+            margin: 3px;
+            padding: 8px 15px;
+            font-size: 13px;
+        }
+
+        .loading, .error, .success {
+            padding: 10px 15px;
             margin: 5px;
-            padding: 10px 20px;
+            border-radius: 6px;
             font-size: 14px;
+            text-align: center;
         }
 
         .loading {
             display: none;
-            text-align: center;
-            margin: 20px 0;
-            padding: 20px;
             background: #fff3cd;
-            border-radius: 8px;
             color: #856404;
-            font-size: 18px;
             border: 1px solid #ffeeba;
         }
 
@@ -306,16 +315,9 @@
             display: block;
         }
 
-        .loading::before {
-            content: "⏳ ";
-        }
-
         .error {
             background: #ffebee;
             color: #c62828;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
             border-left: 5px solid #c62828;
             display: none;
         }
@@ -327,9 +329,6 @@
         .success {
             background: #e8f5e9;
             color: #2e7d32;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
             border-left: 5px solid #4caf50;
             display: none;
         }
@@ -337,76 +336,51 @@
         .success.active {
             display: block;
         }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-
-            h1 {
-                font-size: 1.8em;
-            }
-
-            #drawflow {
-                height: 500px;
-            }
-
-            .controls button {
-                display: block;
-                width: 100%;
-                margin: 5px 0;
-            }
-
-            input[type="file"] {
-                font-size: 12px;
-                padding: 10px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔄 Gerador de Fluxograma Interativo</h1>
+        <div class="header">
+            <h1>🔄 Gerador de Fluxograma Interativo</h1>
 
-        <div class="info">
-            <h3>📋 Colunas Obrigatórias no Excel</h3>
-            <p>Para gerar o fluxograma corretamente, seu arquivo Excel deve conter as seguintes colunas:</p>
-            <ul>
-                <li><strong>NOME PROCESSO</strong> - Nome do processo a ser mapeado</li>
-                <li><strong>ATIVIDADE INÍCIO</strong> - Indica se é ponto inicial (SIM/NÃO)</li>
-                <li><strong>ATIVIDADE ORIGEM</strong> - Atividade de origem no fluxo</li>
-                <li><strong>PROCEDIMENTO</strong> - Descrição do procedimento executado</li>
-                <li><strong>ATIVIDADE DESTINO</strong> - Atividade de destino no fluxo</li>
-            </ul>
-            <p style="margin-top: 10px; font-weight: bold;">⚠️ Formato aceito: Apenas arquivos <strong>.xlsx</strong></p>
+            <div class="info">
+                <h3 class="info-toggle" onclick="toggleInfo()">📋 Colunas Obrigatórias (clique para expandir/recolher)</h3>
+                <div class="info-content collapsed" id="info-content">
+                    <p>Para gerar o fluxograma corretamente, seu arquivo Excel deve conter as seguintes colunas:</p>
+                    <ul>
+                        <li><strong>NOME PROCESSO</strong> - Nome do processo a ser mapeado</li>
+                        <li><strong>ATIVIDADE INÍCIO</strong> - Indica se é ponto inicial (SIM/NÃO)</li>
+                        <li><strong>ATIVIDADE ORIGEM</strong> - Atividade de origem no fluxo</li>
+                        <li><strong>PROCEDIMENTO</strong> - Descrição do procedimento executado</li>
+                        <li><strong>ATIVIDADE DESTINO</strong> - Atividade de destino no fluxo</li>
+                    </ul>
+                    <p style="margin-top: 5px; font-weight: bold;">⚠️ Formatos aceitos: <strong>.xlsx, .xls, .xlsm</strong></p>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <h3>📁 Selecione o Arquivo Excel</h3>
+                <input type="file" id="excel_file" accept=".xlsx,.xls,.xlsm" required>
+                <br>
+                <button onclick="uploadFile()">🚀 Gerar Fluxograma</button>
+            </div>
+
+            <div class="loading" id="loading">⏳ Processando arquivo...</div>
+            <div class="error" id="error"></div>
+            <div class="success" id="success"></div>
         </div>
-
-        <div class="upload-section">
-            <h3>📁 Selecione o Arquivo Excel</h3>
-            <input type="file" id="excel_file" accept=".xlsx" required>
-            <br>
-            <button onclick="uploadFile()">🚀 Gerar Fluxograma Interativo</button>
-        </div>
-
-        <div class="loading" id="loading">
-            Processando arquivo... Por favor, aguarde.
-        </div>
-
-        <div class="error" id="error"></div>
-        <div class="success" id="success"></div>
 
         <div id="processo-nome"></div>
 
         <div class="controls" id="controls">
             <button onclick="editor.zoom_in()">🔍 Zoom +</button>
             <button onclick="editor.zoom_out()">🔍 Zoom -</button>
-            <button onclick="editor.zoom_reset()">↺ Reset Zoom</button>
-            <button onclick="exportFluxograma()">💾 Exportar JSON</button>
-            <button onclick="limparFluxograma()">🗑️ Limpar Tudo</button>
+            <button onclick="editor.zoom_reset()">↺ Reset</button>
+            <button onclick="exportFluxograma()">💾 Exportar</button>
+            <button onclick="limparFluxograma()">🗑️ Limpar</button>
         </div>
 
         <div id="drawflow">
-            <!-- SVG para definir a seta verde -->
             <svg style="position: absolute; width: 0; height: 0;">
                 <defs>
                     <marker id="arrowgreen" markerWidth="12" markerHeight="12" 
@@ -419,12 +393,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leader-line@1.0.7/leader-line.min.js"></script>
     <script>
         const drawflowContainer = document.getElementById("drawflow");
         const editor = new Drawflow(drawflowContainer);
 
-        // CONFIGURAÇÃO BÁSICA DO DRAWFLOW
         editor.start();
         editor.editor_mode = 'edit';
         editor.reroute = true;
@@ -432,24 +404,18 @@
         editor.force_first_input = false;
         editor.curvature = 0.5;
 
-        // CUSTOMIZAR RENDERIZAÇÃO DAS CONEXÕES PARA FORÇAR LINHAS ORTOGONAIS
+        // LINHAS ORTOGONAIS CUSTOMIZADAS
         const originalCreateCurvature = editor.createCurvature.bind(editor);
         editor.createCurvature = function(start_pos_x, start_pos_y, end_pos_x, end_pos_y, curvature_value, type) {
-            // Calcular ponto médio para quebra ortogonal
             const midX = (start_pos_x + end_pos_x) / 2;
-
-            // Criar path SVG com linhas ortogonais (quebras em 90°)
             let lineCurve = '';
 
-            // Se houver diferença significativa na vertical, fazer quebra
             if (Math.abs(end_pos_y - start_pos_y) > 10) {
-                // Linha horizontal -> vertical -> horizontal
                 lineCurve = `M ${start_pos_x} ${start_pos_y} 
                             L ${midX} ${start_pos_y} 
                             L ${midX} ${end_pos_y} 
                             L ${end_pos_x} ${end_pos_y}`;
             } else {
-                // Linha horizontal direta se mesma altura
                 lineCurve = `M ${start_pos_x} ${start_pos_y} L ${end_pos_x} ${end_pos_y}`;
             }
 
@@ -459,7 +425,11 @@
         let currentData = null;
         let isDragging = false;
 
-        // Adicionar setas verdes às conexões
+        function toggleInfo() {
+            const content = document.getElementById('info-content');
+            content.classList.toggle('collapsed');
+        }
+
         editor.on('connectionCreated', function(connection) {
             addArrowToConnection(connection.output_id, connection.input_id);
         });
@@ -475,7 +445,6 @@
             }, 100);
         }
 
-        // Otimizar durante drag
         editor.on('nodeSelected', function(id) {
             if (!isDragging) {
                 isDragging = true;
@@ -492,13 +461,11 @@
             }
         });
 
-        // Debounce para redraw durante movimento
         let redrawTimeout;
         editor.on('nodeMoved', function(id) {
             clearTimeout(redrawTimeout);
             redrawTimeout = setTimeout(() => {
                 editor.updateConnectionNodes('node-' + id);
-                // Reaplicar setas após mover
                 const connections = document.querySelectorAll('.connection .main-path');
                 connections.forEach(path => {
                     path.setAttribute('marker-end', 'url(#arrowgreen)');
@@ -525,8 +492,11 @@
                 return;
             }
 
-            if (!file.name.endsWith('.xlsx')) {
-                showError('Por favor, selecione apenas arquivos .xlsx');
+            const validExtensions = ['.xlsx', '.xls', '.xlsm'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+
+            if (!validExtensions.includes(fileExt)) {
+                showError('Por favor, selecione apenas arquivos .xlsx, .xls ou .xlsm');
                 return;
             }
 
@@ -551,7 +521,7 @@
                 renderFluxograma(data);
 
                 document.getElementById('controls').style.display = 'block';
-                showSuccess('✓ Fluxograma com linhas ortogonais (quebras em ângulo reto)!');
+                showSuccess('✓ Fluxograma gerado com sucesso!');
 
             } catch (error) {
                 showError('Erro ao gerar fluxograma: ' + error.message);
@@ -586,35 +556,24 @@
 
             const nodeIdMap = {};
 
-            // Adicionar todos os nós
             data.nodes.forEach(node => {
                 const nodeHtml = `<div>${node.name}</div>`;
                 const drawflowNodeId = editor.addNode(
-                    node.type,
-                    1,
-                    1,
-                    node.pos_x,
-                    node.pos_y,
-                    node.type,
-                    {},
-                    nodeHtml,
-                    false
+                    node.type, 1, 1,
+                    node.pos_x, node.pos_y,
+                    node.type, {}, nodeHtml, false
                 );
-
                 nodeIdMap[node.id] = drawflowNodeId;
             });
 
-            // Adicionar todas as conexões
             data.connections.forEach(conn => {
                 const fromId = nodeIdMap[conn.from];
                 const toId = nodeIdMap[conn.to];
-
                 if (fromId && toId) {
                     editor.addConnection(fromId, toId, 'output_1', 'input_1');
                 }
             });
 
-            // Aplicar setas verdes após renderização
             setTimeout(() => {
                 const connections = document.querySelectorAll('.connection .main-path');
                 connections.forEach(path => {
@@ -626,9 +585,7 @@
                 drawflowContainer.style.pointerEvents = 'auto';
                 drawflowContainer.style.opacity = '1';
 
-                requestAnimationFrame(() => {
-                    editor.zoom_reset();
-                });
+                requestAnimationFrame(() => editor.zoom_reset());
             }, 100);
         }
 
@@ -649,7 +606,7 @@
             link.click();
 
             URL.revokeObjectURL(url);
-            showSuccess('✓ Fluxograma exportado com sucesso!');
+            showSuccess('✓ Fluxograma exportado!');
         }
 
         function limparFluxograma() {
@@ -669,7 +626,6 @@
             }
         }
 
-        // Atalhos de teclado
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
                 switch(e.key) {
@@ -690,7 +646,6 @@
             }
         });
 
-        // Drag and drop de arquivo
         const uploadSection = document.querySelector('.upload-section');
 
         uploadSection.addEventListener('dragover', (e) => {
