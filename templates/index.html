@@ -153,7 +153,7 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        /* INÍCIO E FIM COMO CÍRCULOS */
+        /* INÍCIO E FIM COMO CÍRCULOS MENORES - 60x60px */
         .drawflow .drawflow-node.start,
         .drawflow .drawflow-node.end {
             border-radius: 50% !important;
@@ -161,12 +161,14 @@
             border-color: #00A896;
             color: #004D40;
             font-weight: bold;
-            width: 60px;
-            height: 60px;
+            width: 60px !important;
+            height: 60px !important;
+            min-width: 60px !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: 5px;
+            font-size: 11px;
         }
 
         /* ATIVIDADES - Retângulos arredondados */
@@ -185,6 +187,38 @@
             border-color: #B0B0B0;
             color: #333;
             font-size: 13px;
+        }
+
+        /* CONECTORES CENTRALIZADOS NAS LATERAIS - Bolinhas menores (8px) */
+        .drawflow .drawflow-node .input,
+        .drawflow .drawflow-node .output {
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50%;
+            background: #00796B;
+            border: 2px solid white;
+            position: absolute;
+        }
+
+        /* Input centralizado no MEIO da ESQUERDA */
+        .drawflow .drawflow-node .input {
+            left: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Output centralizado no MEIO da DIREITA */
+        .drawflow .drawflow-node .output {
+            right: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Hover nos conectores */
+        .drawflow .drawflow-node .input:hover,
+        .drawflow .drawflow-node .output:hover {
+            background: #004D40;
+            transform: translateY(-50%) scale(1.3);
         }
 
         /* Desabilitar hover pesado durante drag */
@@ -207,7 +241,7 @@
             border-width: 3px;
         }
 
-        /* SETAS VERDES COM INDICAÇÃO DE DIREÇÃO */
+        /* LINHAS ORTOGONAIS (ÂNGULO RETO) COM SETAS VERDES */
         .drawflow svg {
             will-change: transform;
             transform: translateZ(0);
@@ -215,12 +249,14 @@
 
         .drawflow .connection .main-path {
             stroke: #00796B !important;
-            stroke-width: 3 !important;
+            stroke-width: 2.5 !important;
             fill: none;
             transition: none;
+            /* Importante para linhas ortogonais */
+            stroke-linecap: square;
+            stroke-linejoin: miter;
         }
 
-        /* Seta no final da linha */
         .drawflow .connection {
             pointer-events: all;
         }
@@ -376,9 +412,9 @@
             <!-- SVG para definir a seta verde -->
             <svg style="position: absolute; width: 0; height: 0;">
                 <defs>
-                    <marker id="arrowgreen" markerWidth="20" markerHeight="20" 
-                            refX="15" refY="10" orient="auto" markerUnits="strokeWidth">
-                        <path d="M5,5 L5,15 L15,10 Z" fill="#00796B" />
+                    <marker id="arrowgreen" markerWidth="12" markerHeight="12" 
+                            refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+                        <path d="M2,2 L2,10 L10,6 Z" fill="#00796B" />
                     </marker>
                 </defs>
             </svg>
@@ -390,13 +426,16 @@
         const drawflowContainer = document.getElementById("drawflow");
         const editor = new Drawflow(drawflowContainer);
 
-        // CONFIGURAÇÕES DE PERFORMANCE OTIMIZADAS
+        // CONFIGURAÇÕES PARA LINHAS ORTOGONAIS (QUEBRAS EM ÂNGULO RETO)
         editor.start();
         editor.editor_mode = 'edit';
         editor.reroute = true;
+        editor.reroute_fix_curvature = true; // Importante para quebras
         editor.force_first_input = false;
-        editor.line_path = 1;
-        editor.curvature = 0;
+
+        // ATIVAR LINHAS ORTOGONAIS - QUEBRAS EM ÂNGULO RETO
+        editor.line_path = 5; // 5 = step (linhas com quebras ortogonais)
+        editor.curvature = 0; // Sem curvas
 
         let currentData = null;
         let isDragging = false;
@@ -412,7 +451,7 @@
                 connections.forEach(path => {
                     path.setAttribute('marker-end', 'url(#arrowgreen)');
                     path.style.stroke = '#00796B';
-                    path.style.strokeWidth = '3';
+                    path.style.strokeWidth = '2.5';
                 });
             }, 100);
         }
@@ -445,7 +484,7 @@
                 connections.forEach(path => {
                     path.setAttribute('marker-end', 'url(#arrowgreen)');
                     path.style.stroke = '#00796B';
-                    path.style.strokeWidth = '3';
+                    path.style.strokeWidth = '2.5';
                 });
             }, 16);
         });
@@ -493,7 +532,7 @@
                 renderFluxograma(data);
 
                 document.getElementById('controls').style.display = 'block';
-                showSuccess('✓ Fluxograma gerado! Início/Fim são círculos, setas verdes indicam direção.');
+                showSuccess('✓ Fluxograma com linhas ortogonais (quebras em ângulo reto)!');
 
             } catch (error) {
                 showError('Erro ao gerar fluxograma: ' + error.message);
@@ -562,7 +601,7 @@
                 connections.forEach(path => {
                     path.setAttribute('marker-end', 'url(#arrowgreen)');
                     path.style.stroke = '#00796B';
-                    path.style.strokeWidth = '3';
+                    path.style.strokeWidth = '2.5';
                 });
 
                 drawflowContainer.style.pointerEvents = 'auto';
