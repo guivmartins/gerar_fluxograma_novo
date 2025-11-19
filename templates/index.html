@@ -133,27 +133,58 @@
                 linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
             background-size: 20px 20px;
-            /* OTIMIZAÇÕES DE PERFORMANCE CRÍTICAS */
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
         }
 
-        /* OTIMIZAÇÕES DE PERFORMANCE PARA DRAWFLOW */
+        /* ESTILOS OTIMIZADOS PARA DRAWFLOW */
         .drawflow .drawflow-node {
-            border-radius: 10px;
             border: 2px solid;
             padding: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
             min-width: 150px;
             text-align: center;
             font-weight: 500;
-            /* Hardware acceleration */
             will-change: transform;
             transform: translateZ(0);
             backface-visibility: hidden;
             pointer-events: auto;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* INÍCIO E FIM COMO CÍRCULOS */
+        .drawflow .drawflow-node.start,
+        .drawflow .drawflow-node.end {
+            border-radius: 50% !important;
+            background: linear-gradient(135deg, #87C2BC 0%, #6BA9A3 100%);
+            border-color: #00A896;
+            color: #004D40;
+            font-weight: bold;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        /* ATIVIDADES - Retângulos arredondados */
+        .drawflow .drawflow-node.activity {
+            border-radius: 10px;
+            background: linear-gradient(135deg, #00AE9D 0%, #008F81 100%);
+            border-color: #006B5A;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* PROCEDIMENTOS - Retângulos */
+        .drawflow .drawflow-node.procedure {
+            border-radius: 10px;
+            background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
+            border-color: #B0B0B0;
+            color: #333;
+            font-size: 13px;
         }
 
         /* Desabilitar hover pesado durante drag */
@@ -171,41 +202,31 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.25);
         }
 
-        .drawflow .drawflow-node.start,
-        .drawflow .drawflow-node.end {
-            background: linear-gradient(135deg, #87C2BC 0%, #6BA9A3 100%);
-            border-color: #00A896;
-            color: #004D40;
-            font-weight: bold;
-        }
-
-        .drawflow .drawflow-node.activity {
-            background: linear-gradient(135deg, #00AE9D 0%, #008F81 100%);
-            border-color: #006B5A;
-            color: white;
-            font-weight: bold;
-        }
-
-        .drawflow .drawflow-node.procedure {
-            background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%);
-            border-color: #B0B0B0;
-            color: #333;
-            font-size: 13px;
-        }
-
         .drawflow-node.selected {
             box-shadow: 0 0 20px rgba(0,121,107,0.6);
             border-width: 3px;
         }
 
-        /* Otimizar renderização de conexões SVG */
+        /* SETAS VERDES COM INDICAÇÃO DE DIREÇÃO */
         .drawflow svg {
             will-change: transform;
             transform: translateZ(0);
         }
 
         .drawflow .connection .main-path {
+            stroke: #00796B !important;
+            stroke-width: 3 !important;
+            fill: none;
             transition: none;
+        }
+
+        /* Seta no final da linha */
+        .drawflow .connection {
+            pointer-events: all;
+        }
+
+        .drawflow .main-path {
+            marker-end: url(#arrowgreen);
         }
 
         #processo-nome {
@@ -351,7 +372,17 @@
             <button onclick="limparFluxograma()">🗑️ Limpar Tudo</button>
         </div>
 
-        <div id="drawflow"></div>
+        <div id="drawflow">
+            <!-- SVG para definir a seta verde -->
+            <svg style="position: absolute; width: 0; height: 0;">
+                <defs>
+                    <marker id="arrowgreen" markerWidth="20" markerHeight="20" 
+                            refX="15" refY="10" orient="auto" markerUnits="strokeWidth">
+                        <path d="M5,5 L5,15 L15,10 Z" fill="#00796B" />
+                    </marker>
+                </defs>
+            </svg>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
@@ -364,13 +395,29 @@
         editor.editor_mode = 'edit';
         editor.reroute = true;
         editor.force_first_input = false;
-        editor.line_path = 1; // Linha reta - mais rápida que curvas Bezier
-        editor.curvature = 0; // Desabilitar curvatura
+        editor.line_path = 1;
+        editor.curvature = 0;
 
         let currentData = null;
         let isDragging = false;
 
-        // Otimizar durante drag - desabilitar hover pesado
+        // Adicionar setas verdes às conexões
+        editor.on('connectionCreated', function(connection) {
+            addArrowToConnection(connection.output_id, connection.input_id);
+        });
+
+        function addArrowToConnection(outputId, inputId) {
+            setTimeout(() => {
+                const connections = document.querySelectorAll('.connection .main-path');
+                connections.forEach(path => {
+                    path.setAttribute('marker-end', 'url(#arrowgreen)');
+                    path.style.stroke = '#00796B';
+                    path.style.strokeWidth = '3';
+                });
+            }, 100);
+        }
+
+        // Otimizar durante drag
         editor.on('nodeSelected', function(id) {
             if (!isDragging) {
                 isDragging = true;
@@ -387,13 +434,20 @@
             }
         });
 
-        // Debounce para redraw durante movimento - 60fps
+        // Debounce para redraw durante movimento
         let redrawTimeout;
         editor.on('nodeMoved', function(id) {
             clearTimeout(redrawTimeout);
             redrawTimeout = setTimeout(() => {
                 editor.updateConnectionNodes('node-' + id);
-            }, 16); // ~60fps
+                // Reaplicar setas após mover
+                const connections = document.querySelectorAll('.connection .main-path');
+                connections.forEach(path => {
+                    path.setAttribute('marker-end', 'url(#arrowgreen)');
+                    path.style.stroke = '#00796B';
+                    path.style.strokeWidth = '3';
+                });
+            }, 16);
         });
 
         async function uploadFile() {
@@ -403,7 +457,6 @@
             const errorEl = document.getElementById('error');
             const successEl = document.getElementById('success');
 
-            // Limpar mensagens anteriores
             errorEl.classList.remove('active');
             errorEl.textContent = '';
             successEl.classList.remove('active');
@@ -422,7 +475,6 @@
             const formData = new FormData();
             formData.append('excel_file', file);
 
-            // Mostrar loading
             loadingEl.classList.add('active');
 
             try {
@@ -440,11 +492,8 @@
                 currentData = data;
                 renderFluxograma(data);
 
-                // Mostrar controles
                 document.getElementById('controls').style.display = 'block';
-
-                // Mostrar mensagem de sucesso
-                showSuccess('✓ Fluxograma gerado! Arraste os nós para reorganizar (performance otimizada).');
+                showSuccess('✓ Fluxograma gerado! Início/Fim são círculos, setas verdes indicam direção.');
 
             } catch (error) {
                 showError('Erro ao gerar fluxograma: ' + error.message);
@@ -457,77 +506,68 @@
             const errorEl = document.getElementById('error');
             errorEl.textContent = '❌ ' + message;
             errorEl.classList.add('active');
-
-            setTimeout(() => {
-                errorEl.classList.remove('active');
-            }, 5000);
+            setTimeout(() => errorEl.classList.remove('active'), 5000);
         }
 
         function showSuccess(message) {
             const successEl = document.getElementById('success');
             successEl.textContent = message;
             successEl.classList.add('active');
-
-            setTimeout(() => {
-                successEl.classList.remove('active');
-            }, 5000);
+            setTimeout(() => successEl.classList.remove('active'), 5000);
         }
 
         function renderFluxograma(data) {
-            // OTIMIZAÇÃO CRÍTICA: Suspender renderização durante batch
             drawflowContainer.style.pointerEvents = 'none';
             drawflowContainer.style.opacity = '0.7';
 
-            // Limpa fluxograma anterior
             editor.clear();
 
-            // Mostra nome do processo
             const nomeEl = document.getElementById('processo-nome');
             nomeEl.textContent = '📊 ' + data.nome_processo;
             nomeEl.style.display = 'block';
 
-            // Mapear IDs originais para IDs do Drawflow
             const nodeIdMap = {};
 
-            // BATCH RENDERING: Adicionar todos os nós sem redesenhar
+            // Adicionar todos os nós
             data.nodes.forEach(node => {
                 const nodeHtml = `<div>${node.name}</div>`;
                 const drawflowNodeId = editor.addNode(
                     node.type,
-                    1,  // inputs
-                    1,  // outputs
+                    1,
+                    1,
                     node.pos_x,
                     node.pos_y,
                     node.type,
                     {},
                     nodeHtml,
-                    false // NÃO redesenhar a cada nó
+                    false
                 );
 
                 nodeIdMap[node.id] = drawflowNodeId;
             });
 
-            // BATCH RENDERING: Adicionar todas as conexões sem redesenhar
+            // Adicionar todas as conexões
             data.connections.forEach(conn => {
                 const fromId = nodeIdMap[conn.from];
                 const toId = nodeIdMap[conn.to];
 
                 if (fromId && toId) {
-                    editor.addConnection(
-                        fromId,
-                        toId,
-                        'output_1',
-                        'input_1'
-                    );
+                    editor.addConnection(fromId, toId, 'output_1', 'input_1');
                 }
             });
 
-            // Redesenhar APENAS UMA VEZ após todos os elementos
+            // Aplicar setas verdes após renderização
             setTimeout(() => {
+                const connections = document.querySelectorAll('.connection .main-path');
+                connections.forEach(path => {
+                    path.setAttribute('marker-end', 'url(#arrowgreen)');
+                    path.style.stroke = '#00796B';
+                    path.style.strokeWidth = '3';
+                });
+
                 drawflowContainer.style.pointerEvents = 'auto';
                 drawflowContainer.style.opacity = '1';
 
-                // Centralizar visualização com animação suave
                 requestAnimationFrame(() => {
                     editor.zoom_reset();
                 });
@@ -551,7 +591,6 @@
             link.click();
 
             URL.revokeObjectURL(url);
-
             showSuccess('✓ Fluxograma exportado com sucesso!');
         }
 
@@ -568,7 +607,6 @@
                 document.getElementById('controls').style.display = 'none';
                 document.getElementById('excel_file').value = '';
                 currentData = null;
-
                 showSuccess('✓ Fluxograma limpo!');
             }
         }
@@ -594,7 +632,7 @@
             }
         });
 
-        // Drag and drop de arquivo otimizado
+        // Drag and drop de arquivo
         const uploadSection = document.querySelector('.upload-section');
 
         uploadSection.addEventListener('dragover', (e) => {
