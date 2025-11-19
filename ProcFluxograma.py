@@ -41,23 +41,18 @@ def ler_excel_com_encoding(filepath):
     Lê arquivo Excel com suporte a múltiplos formatos e tratamento de encoding.
     Suporta: .xlsx, .xls, .xlsm
     """
-    # Detectar extensão do arquivo
     file_extension = os.path.splitext(filepath)[1].lower()
 
     try:
-        # Tentar ler com pandas (suporta .xlsx e .xlsm nativamente)
         if file_extension in ['.xlsx', '.xlsm']:
-            # openpyxl já lida com UTF-8 automaticamente
             df = pd.read_excel(filepath, engine='openpyxl')
             return df
 
         elif file_extension == '.xls':
-            # Usar xlrd para arquivos XLS antigos (Excel 97-2003)
             try:
                 df = pd.read_excel(filepath, engine='xlrd')
                 return df
             except Exception as e:
-                # Se xlrd falhar, tentar openpyxl como fallback
                 print(f"⚠️ Aviso: xlrd falhou, tentando openpyxl: {str(e)}")
                 df = pd.read_excel(filepath, engine='openpyxl')
                 return df
@@ -66,22 +61,26 @@ def ler_excel_com_encoding(filepath):
             raise ValueError(f"Formato não suportado: {file_extension}")
 
     except UnicodeDecodeError as e:
-        # Tratamento de erro de encoding (raramente acontece com Excel)
         print(f"⚠️ Erro de encoding detectado: {str(e)}")
         encoding_detectado = detectar_encoding(filepath)
         print(f"🔍 Encoding detectado: {encoding_detectado}")
-
-        # Tentar novamente com encoding detectado
         df = pd.read_excel(filepath, encoding=encoding_detectado)
         return df
 
     except Exception as e:
-        # Erro genérico com mensagem amigável
         raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}. Verifique se o arquivo não está corrompido.")
 
 def processar_para_drawflow(filepath):
-    """Processar Excel e retornar dados para Drawflow"""
-    # Ler arquivo com tratamento de encoding
+    """
+    Processar Excel e retornar dados para Drawflow com layout em CASCATA.
+
+    Layout:
+    Coluna 1: Atividades Origem
+    Coluna 2: Procedimentos
+    Coluna 3: Atividades Destino
+    Coluna 4: Procedimentos dos Destinos
+    ...
+    """
     df = ler_excel_com_encoding(filepath)
 
     colunas_necessarias = [
@@ -101,89 +100,147 @@ def processar_para_drawflow(filepath):
     nodes = {}
     connections = []
     node_id = 1
-    pos_x = 50
-    pos_y = 50
-    y_spacing = 120
-    x_spacing = 250
 
-    df_agrupado = df.groupby(["ATIVIDADE ORIGEM", "PROCEDIMENTO"]).agg({
-        "ATIVIDADE INÍCIO": "first",
-        "ATIVIDADE DESTINO": lambda x: [str(i) for i in x.dropna()]
-    }).reset_index()
+    # Espaçamento entre colunas (moderado)
+    x_spacing = 250  # 250px entre colunas
+    y_spacing = 120  # 120px entre nós verticalmente
 
-    inicio_criado = False
+    # Rastrear posições Y usadas por coluna
+    coluna_y_positions = {}
 
-    # Criar nós
-    for idx, row in df_agrupado.iterrows():
+    # Rastrear em qual coluna X cada atividade está
+    atividade_coluna = {}
+    atividade_y_base = {}
+
+    # PASSO 1: Identificar atividade inicial
+    df_inicio = df[df["ATIVIDADE INÍCIO"].str.upper() == "SIM"].head(1)
+    if not df_inicio.empty:
+        atividade_inicial = str(df_inicio.iloc[0]["ATIVIDADE ORIGEM"]).strip()
+
+        # Nó de INÍCIO (coluna 0)
+        inicio_key = "inicio"
+        nodes[inicio_key] = {
+            "id": node_id,
+            "name": "Início",
+            "type": "start",
+            "pos_x": 50,
+            "pos_y": 50
+        }
+        node_id += 1
+
+        # Atividade inicial (coluna 0, logo abaixo do início)
+        ativ_inicial_key = f"ativ_{atividade_inicial}"
+        nodes[ativ_inicial_key] = {
+            "id": node_id,
+            "name": atividade_inicial,
+            "type": "activity",
+            "pos_x": 50,
+            "pos_y": 200
+        }
+        atividade_coluna[atividade_inicial] = 0
+        atividade_y_base[atividade_inicial] = 200
+        node_id += 1
+
+        # Conectar início à atividade inicial
+        connections.append({
+            "from": nodes[inicio_key]["id"],
+            "to": nodes[ativ_inicial_key]["id"]
+        })
+
+    # PASSO 2: Processar cada linha do Excel
+    y_offset = 0
+    procedimentos_por_atividade = {}
+
+    for idx, row in df.iterrows():
         atividade = str(row["ATIVIDADE ORIGEM"]).strip()
         procedimento = str(row["PROCEDIMENTO"]).strip()
-        destinos = row["ATIVIDADE DESTINO"]
-        inicio = str(row["ATIVIDADE INÍCIO"]).strip().upper() if pd.notna(row["ATIVIDADE INÍCIO"]) else "NAO"
+        destino = str(row["ATIVIDADE DESTINO"]).strip() if pd.notna(row["ATIVIDADE DESTINO"]) else None
 
-        current_y = pos_y + (idx * y_spacing)
+        # Determinar coluna X da atividade origem
+        if atividade not in atividade_coluna:
+            # Nova atividade - colocar na próxima coluna disponível
+            max_coluna = max(atividade_coluna.values()) if atividade_coluna else -1
+            atividade_coluna[atividade] = max_coluna + 2  # Pula coluna de procedimentos
+            atividade_y_base[atividade] = 50 + (len(atividade_coluna) * y_spacing)
 
-        # Nó de início
-        if inicio == "SIM" and not inicio_criado:
-            inicio_key = "inicio"
-            nodes[inicio_key] = {
-                "id": node_id,
-                "name": "Início",
-                "type": "start",
-                "pos_x": pos_x,
-                "pos_y": current_y
-            }
-            node_id += 1
-            inicio_criado = True
+        coluna_atividade = atividade_coluna[atividade]
+        x_atividade = 50 + (coluna_atividade * x_spacing)
 
-        # Nó de atividade
+        # Criar nó de atividade se não existir
         atividade_key = f"ativ_{atividade}"
         if atividade_key not in nodes:
             nodes[atividade_key] = {
                 "id": node_id,
                 "name": atividade,
                 "type": "activity",
-                "pos_x": pos_x + x_spacing,
-                "pos_y": current_y
-            }
-
-            # Conectar início à primeira atividade se for o caso
-            if inicio == "SIM" and "inicio" in nodes:
-                connections.append({
-                    "from": nodes["inicio"]["id"],
-                    "to": node_id
-                })
-
-            node_id += 1
-
-        # Nó de procedimento
-        proc_key = f"proc_{atividade}_{procedimento}"
-        if proc_key not in nodes:
-            nodes[proc_key] = {
-                "id": node_id,
-                "name": procedimento,
-                "type": "procedure",
-                "pos_x": pos_x + (x_spacing * 2),
-                "pos_y": current_y
+                "pos_x": x_atividade,
+                "pos_y": atividade_y_base[atividade]
             }
             node_id += 1
+            procedimentos_por_atividade[atividade] = []
 
-        # Conexão: atividade -> procedimento
+        # PROCEDIMENTO na coluna seguinte (coluna_atividade + 1)
+        coluna_proc = coluna_atividade + 1
+        x_proc = 50 + (coluna_proc * x_spacing)
+
+        # Calcular Y do procedimento (empilhado verticalmente)
+        num_procs = len(procedimentos_por_atividade[atividade])
+        y_proc = atividade_y_base[atividade] + (num_procs * y_spacing)
+
+        proc_key = f"proc_{atividade}_{idx}"
+        nodes[proc_key] = {
+            "id": node_id,
+            "name": procedimento,
+            "type": "procedure",
+            "pos_x": x_proc,
+            "pos_y": y_proc
+        }
+        node_id += 1
+        procedimentos_por_atividade[atividade].append(proc_key)
+
+        # Conectar atividade → procedimento
         connections.append({
             "from": nodes[atividade_key]["id"],
             "to": nodes[proc_key]["id"]
         })
 
-        # Nós de destino e conexões
-        if destinos and len(destinos) > 0 and destinos[0]:
-            for i, destino in enumerate(destinos):
+        # DESTINO na coluna seguinte ao procedimento (coluna_proc + 1)
+        if destino and destino.upper() not in ["", "NAN", "NONE"]:
+            coluna_destino = coluna_proc + 1
+            x_destino = 50 + (coluna_destino * x_spacing)
+
+            # Verificar se destino é FIM
+            if destino.upper() == "FIM" or "FIM" in destino.upper():
+                fim_key = f"fim_{idx}"
+                if fim_key not in nodes:
+                    nodes[fim_key] = {
+                        "id": node_id,
+                        "name": "Fim",
+                        "type": "end",
+                        "pos_x": x_destino,
+                        "pos_y": y_proc
+                    }
+                    node_id += 1
+
+                connections.append({
+                    "from": nodes[proc_key]["id"],
+                    "to": nodes[fim_key]["id"]
+                })
+            else:
+                # Atividade destino
+                if destino not in atividade_coluna:
+                    atividade_coluna[destino] = coluna_destino
+                    atividade_y_base[destino] = y_proc
+                    procedimentos_por_atividade[destino] = []
+
                 destino_key = f"ativ_{destino}"
                 if destino_key not in nodes:
                     nodes[destino_key] = {
                         "id": node_id,
                         "name": destino,
                         "type": "activity",
-                        "pos_x": pos_x + (x_spacing * 3),
-                        "pos_y": current_y + (i * 80)
+                        "pos_x": x_destino,
+                        "pos_y": atividade_y_base[destino]
                     }
                     node_id += 1
 
@@ -191,23 +248,6 @@ def processar_para_drawflow(filepath):
                     "from": nodes[proc_key]["id"],
                     "to": nodes[destino_key]["id"]
                 })
-        else:
-            # Nó de fim
-            fim_key = f"fim_{idx}"
-            if fim_key not in nodes:
-                nodes[fim_key] = {
-                    "id": node_id,
-                    "name": "Fim",
-                    "type": "end",
-                    "pos_x": pos_x + (x_spacing * 3),
-                    "pos_y": current_y
-                }
-                node_id += 1
-
-            connections.append({
-                "from": nodes[proc_key]["id"],
-                "to": nodes[fim_key]["id"]
-            })
 
     return {
         "nome_processo": nome_processo,
@@ -217,7 +257,6 @@ def processar_para_drawflow(filepath):
 
 def gerar_fluxograma(filepath):
     """Função original para gerar imagens estáticas com Graphviz"""
-    # Usar a nova função de leitura com encoding
     df = ler_excel_com_encoding(filepath)
 
     colunas_necessarias = [
