@@ -3,6 +3,7 @@ import pandas as pd
 from graphviz import Digraph
 import textwrap
 import os
+import chardet
 
 # Cores
 COLOR_EDGE = "#00796B"
@@ -26,9 +27,62 @@ def wrap_label(text, max_len=15):
         return ""
     return "\n".join(textwrap.wrap(text, max_len))
 
+def detectar_encoding(filepath):
+    """Detecta o encoding de um arquivo (usado como fallback)"""
+    try:
+        with open(filepath, 'rb') as f:
+            resultado = chardet.detect(f.read())
+            return resultado['encoding']
+    except Exception:
+        return 'utf-8'
+
+def ler_excel_com_encoding(filepath):
+    """
+    Lê arquivo Excel com suporte a múltiplos formatos e tratamento de encoding.
+    Suporta: .xlsx, .xls, .xlsm
+    """
+    # Detectar extensão do arquivo
+    file_extension = os.path.splitext(filepath)[1].lower()
+
+    try:
+        # Tentar ler com pandas (suporta .xlsx e .xlsm nativamente)
+        if file_extension in ['.xlsx', '.xlsm']:
+            # openpyxl já lida com UTF-8 automaticamente
+            df = pd.read_excel(filepath, engine='openpyxl')
+            return df
+
+        elif file_extension == '.xls':
+            # Usar xlrd para arquivos XLS antigos (Excel 97-2003)
+            try:
+                df = pd.read_excel(filepath, engine='xlrd')
+                return df
+            except Exception as e:
+                # Se xlrd falhar, tentar openpyxl como fallback
+                print(f"⚠️ Aviso: xlrd falhou, tentando openpyxl: {str(e)}")
+                df = pd.read_excel(filepath, engine='openpyxl')
+                return df
+
+        else:
+            raise ValueError(f"Formato não suportado: {file_extension}")
+
+    except UnicodeDecodeError as e:
+        # Tratamento de erro de encoding (raramente acontece com Excel)
+        print(f"⚠️ Erro de encoding detectado: {str(e)}")
+        encoding_detectado = detectar_encoding(filepath)
+        print(f"🔍 Encoding detectado: {encoding_detectado}")
+
+        # Tentar novamente com encoding detectado
+        df = pd.read_excel(filepath, encoding=encoding_detectado)
+        return df
+
+    except Exception as e:
+        # Erro genérico com mensagem amigável
+        raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}. Verifique se o arquivo não está corrompido.")
+
 def processar_para_drawflow(filepath):
-    """Nova função para processar Excel e retornar dados para Drawflow"""
-    df = pd.read_excel(filepath)
+    """Processar Excel e retornar dados para Drawflow"""
+    # Ler arquivo com tratamento de encoding
+    df = ler_excel_com_encoding(filepath)
 
     colunas_necessarias = [
         "NOME PROCESSO",
@@ -37,6 +91,7 @@ def processar_para_drawflow(filepath):
         "PROCEDIMENTO",
         "ATIVIDADE DESTINO",
     ]
+
     for col in colunas_necessarias:
         if col not in df.columns:
             raise ValueError(f"❌ Coluna obrigatória ausente no Excel: {col}")
@@ -162,7 +217,8 @@ def processar_para_drawflow(filepath):
 
 def gerar_fluxograma(filepath):
     """Função original para gerar imagens estáticas com Graphviz"""
-    df = pd.read_excel(filepath)
+    # Usar a nova função de leitura com encoding
+    df = ler_excel_com_encoding(filepath)
 
     colunas_necessarias = [
         "NOME PROCESSO",
@@ -171,6 +227,7 @@ def gerar_fluxograma(filepath):
         "PROCEDIMENTO",
         "ATIVIDADE DESTINO",
     ]
+
     for col in colunas_necessarias:
         if col not in df.columns:
             raise ValueError(f"❌ Coluna obrigatória ausente no Excel: {col}")
