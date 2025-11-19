@@ -141,9 +141,47 @@
             transform: none;
         }
 
-        #drawflow {
+        /* CONTAINER DO DRAWFLOW COM SCROLL */
+        .drawflow-wrapper {
             flex: 1;
             width: 100%;
+            position: relative;
+            overflow: auto; /* SCROLL habilitado */
+            scroll-behavior: smooth; /* Scroll suave */
+        }
+
+        /* Estilizar a barra de rolagem */
+        .drawflow-wrapper::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        .drawflow-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .drawflow-wrapper::-webkit-scrollbar-thumb {
+            background: #00796B;
+            border-radius: 10px;
+        }
+
+        .drawflow-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #004D40;
+        }
+
+        /* Firefox */
+        .drawflow-wrapper {
+            scrollbar-width: thin;
+            scrollbar-color: #00796B #f1f1f1;
+        }
+
+        #drawflow {
+            /* Tamanho mínimo para permitir scroll */
+            min-width: 100%;
+            min-height: 100%;
+            width: max-content; /* Cresce conforme conteúdo */
+            height: max-content; /* Cresce conforme conteúdo */
             border: none;
             position: relative;
             background: #fafafa;
@@ -336,6 +374,26 @@
         .success.active {
             display: block;
         }
+
+        /* Indicador visual de scroll */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 121, 107, 0.8);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .scroll-indicator.visible {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -380,21 +438,29 @@
             <button onclick="limparFluxograma()">🗑️ Limpar</button>
         </div>
 
-        <div id="drawflow">
-            <svg style="position: absolute; width: 0; height: 0;">
-                <defs>
-                    <marker id="arrowgreen" markerWidth="12" markerHeight="12" 
-                            refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-                        <path d="M2,2 L2,10 L10,6 Z" fill="#00796B" />
-                    </marker>
-                </defs>
-            </svg>
+        <!-- WRAPPER COM SCROLL -->
+        <div class="drawflow-wrapper" id="drawflow-wrapper">
+            <div id="drawflow">
+                <svg style="position: absolute; width: 0; height: 0;">
+                    <defs>
+                        <marker id="arrowgreen" markerWidth="12" markerHeight="12" 
+                                refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+                            <path d="M2,2 L2,10 L10,6 Z" fill="#00796B" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <div class="scroll-indicator" id="scroll-indicator">
+                ↓ Role para ver mais ↓
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
     <script>
         const drawflowContainer = document.getElementById("drawflow");
+        const drawflowWrapper = document.getElementById("drawflow-wrapper");
+        const scrollIndicator = document.getElementById("scroll-indicator");
         const editor = new Drawflow(drawflowContainer);
 
         editor.start();
@@ -424,6 +490,27 @@
 
         let currentData = null;
         let isDragging = false;
+
+        // INDICADOR DE SCROLL
+        function checkScrollIndicator() {
+            const hasVerticalScroll = drawflowWrapper.scrollHeight > drawflowWrapper.clientHeight;
+            const hasHorizontalScroll = drawflowWrapper.scrollWidth > drawflowWrapper.clientWidth;
+            const isAtBottom = drawflowWrapper.scrollTop + drawflowWrapper.clientHeight >= drawflowWrapper.scrollHeight - 10;
+
+            if ((hasVerticalScroll || hasHorizontalScroll) && !isAtBottom) {
+                scrollIndicator.classList.add('visible');
+                setTimeout(() => {
+                    scrollIndicator.classList.remove('visible');
+                }, 3000);
+            } else {
+                scrollIndicator.classList.remove('visible');
+            }
+        }
+
+        // Checar scroll ao renderizar e ao mover
+        drawflowWrapper.addEventListener('scroll', () => {
+            checkScrollIndicator();
+        });
 
         function toggleInfo() {
             const content = document.getElementById('info-content');
@@ -521,7 +608,7 @@
                 renderFluxograma(data);
 
                 document.getElementById('controls').style.display = 'block';
-                showSuccess('✓ Fluxograma gerado com sucesso!');
+                showSuccess('✓ Fluxograma gerado! Use a barra de rolagem para navegar.');
 
             } catch (error) {
                 showError('Erro ao gerar fluxograma: ' + error.message);
@@ -585,7 +672,11 @@
                 drawflowContainer.style.pointerEvents = 'auto';
                 drawflowContainer.style.opacity = '1';
 
-                requestAnimationFrame(() => editor.zoom_reset());
+                requestAnimationFrame(() => {
+                    editor.zoom_reset();
+                    // Mostrar indicador de scroll se necessário
+                    setTimeout(checkScrollIndicator, 500);
+                });
             }, 100);
         }
 
