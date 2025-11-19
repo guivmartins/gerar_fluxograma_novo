@@ -101,93 +101,100 @@ def processar_para_drawflow(filepath):
     connections = []
     node_id = 1
 
-    # Espaçamento entre colunas (moderado)
-    x_spacing = 250  # 250px entre colunas
-    y_spacing = 120  # 120px entre nós verticalmente
+    # Espaçamento
+    x_spacing = 250
+    y_spacing = 120
 
-    # Rastrear posições Y usadas por coluna
-    coluna_y_positions = {}
+    # Rastrear colunas e posições
+    atividade_info = {}  # {nome_atividade: {"coluna": X, "y_base": Y, "node_id": ID}}
+    coluna_atual = 0
+    y_global = 50
 
-    # Rastrear em qual coluna X cada atividade está
-    atividade_coluna = {}
-    atividade_y_base = {}
+    # PASSO 1: Criar nó de INÍCIO
+    inicio_key = "inicio"
+    nodes[inicio_key] = {
+        "id": node_id,
+        "name": "Início",
+        "type": "start",
+        "pos_x": 50,
+        "pos_y": y_global
+    }
+    inicio_id = node_id
+    node_id += 1
+    y_global += y_spacing
 
-    # PASSO 1: Identificar atividade inicial
-    df_inicio = df[df["ATIVIDADE INÍCIO"].str.upper() == "SIM"].head(1)
+    # PASSO 2: Identificar atividade inicial
+    df_inicio = df[df["ATIVIDADE INÍCIO"].str.strip().str.upper() == "SIM"]
     if not df_inicio.empty:
         atividade_inicial = str(df_inicio.iloc[0]["ATIVIDADE ORIGEM"]).strip()
 
-        # Nó de INÍCIO (coluna 0)
-        inicio_key = "inicio"
-        nodes[inicio_key] = {
-            "id": node_id,
-            "name": "Início",
-            "type": "start",
-            "pos_x": 50,
-            "pos_y": 50
-        }
-        node_id += 1
-
-        # Atividade inicial (coluna 0, logo abaixo do início)
-        ativ_inicial_key = f"ativ_{atividade_inicial}"
-        nodes[ativ_inicial_key] = {
+        # Criar atividade inicial (coluna 0)
+        ativ_key = f"ativ_{atividade_inicial}"
+        nodes[ativ_key] = {
             "id": node_id,
             "name": atividade_inicial,
             "type": "activity",
             "pos_x": 50,
-            "pos_y": 200
+            "pos_y": y_global
         }
-        atividade_coluna[atividade_inicial] = 0
-        atividade_y_base[atividade_inicial] = 200
-        node_id += 1
 
-        # Conectar início à atividade inicial
+        atividade_info[atividade_inicial] = {
+            "coluna": 0,
+            "y_base": y_global,
+            "node_id": node_id,
+            "proc_count": 0
+        }
+
+        # Conectar início → atividade inicial
         connections.append({
-            "from": nodes[inicio_key]["id"],
-            "to": nodes[ativ_inicial_key]["id"]
+            "from": inicio_id,
+            "to": node_id
         })
 
-    # PASSO 2: Processar cada linha do Excel
-    y_offset = 0
-    procedimentos_por_atividade = {}
+        node_id += 1
 
+    # PASSO 3: Processar cada linha do DataFrame
     for idx, row in df.iterrows():
-        atividade = str(row["ATIVIDADE ORIGEM"]).strip()
+        atividade_origem = str(row["ATIVIDADE ORIGEM"]).strip()
         procedimento = str(row["PROCEDIMENTO"]).strip()
-        destino = str(row["ATIVIDADE DESTINO"]).strip() if pd.notna(row["ATIVIDADE DESTINO"]) else None
+        destino_raw = row["ATIVIDADE DESTINO"]
+        atividade_destino = str(destino_raw).strip() if pd.notna(destino_raw) else None
 
-        # Determinar coluna X da atividade origem
-        if atividade not in atividade_coluna:
-            # Nova atividade - colocar na próxima coluna disponível
-            max_coluna = max(atividade_coluna.values()) if atividade_coluna else -1
-            atividade_coluna[atividade] = max_coluna + 2  # Pula coluna de procedimentos
-            atividade_y_base[atividade] = 50 + (len(atividade_coluna) * y_spacing)
+        # Garantir que atividade origem existe
+        if atividade_origem not in atividade_info:
+            # Criar nova atividade em coluna par
+            coluna_atual += 2
+            y_nova = 50 + (len(atividade_info) * y_spacing * 2)
 
-        coluna_atividade = atividade_coluna[atividade]
-        x_atividade = 50 + (coluna_atividade * x_spacing)
-
-        # Criar nó de atividade se não existir
-        atividade_key = f"ativ_{atividade}"
-        if atividade_key not in nodes:
-            nodes[atividade_key] = {
+            ativ_key = f"ativ_{atividade_origem}"
+            nodes[ativ_key] = {
                 "id": node_id,
-                "name": atividade,
+                "name": atividade_origem,
                 "type": "activity",
-                "pos_x": x_atividade,
-                "pos_y": atividade_y_base[atividade]
+                "pos_x": 50 + (coluna_atual * x_spacing),
+                "pos_y": y_nova
+            }
+
+            atividade_info[atividade_origem] = {
+                "coluna": coluna_atual,
+                "y_base": y_nova,
+                "node_id": node_id,
+                "proc_count": 0
             }
             node_id += 1
-            procedimentos_por_atividade[atividade] = []
 
-        # PROCEDIMENTO na coluna seguinte (coluna_atividade + 1)
-        coluna_proc = coluna_atividade + 1
+        # Obter info da atividade origem
+        info_origem = atividade_info[atividade_origem]
+        coluna_ativ = info_origem["coluna"]
+        y_base_ativ = info_origem["y_base"]
+        ativ_node_id = info_origem["node_id"]
+
+        # PROCEDIMENTO (coluna seguinte à atividade - coluna ímpar)
+        coluna_proc = coluna_ativ + 1
         x_proc = 50 + (coluna_proc * x_spacing)
+        y_proc = y_base_ativ + (info_origem["proc_count"] * y_spacing)
 
-        # Calcular Y do procedimento (empilhado verticalmente)
-        num_procs = len(procedimentos_por_atividade[atividade])
-        y_proc = atividade_y_base[atividade] + (num_procs * y_spacing)
-
-        proc_key = f"proc_{atividade}_{idx}"
+        proc_key = f"proc_{atividade_origem}_{idx}"
         nodes[proc_key] = {
             "id": node_id,
             "name": procedimento,
@@ -195,58 +202,65 @@ def processar_para_drawflow(filepath):
             "pos_x": x_proc,
             "pos_y": y_proc
         }
+        proc_node_id = node_id
         node_id += 1
-        procedimentos_por_atividade[atividade].append(proc_key)
+
+        # Incrementar contador de procedimentos
+        atividade_info[atividade_origem]["proc_count"] += 1
 
         # Conectar atividade → procedimento
         connections.append({
-            "from": nodes[atividade_key]["id"],
-            "to": nodes[proc_key]["id"]
+            "from": ativ_node_id,
+            "to": proc_node_id
         })
 
-        # DESTINO na coluna seguinte ao procedimento (coluna_proc + 1)
-        if destino and destino.upper() not in ["", "NAN", "NONE"]:
+        # DESTINO (coluna seguinte ao procedimento - coluna par)
+        if atividade_destino and atividade_destino.upper() not in ["", "NAN", "NONE"]:
             coluna_destino = coluna_proc + 1
             x_destino = 50 + (coluna_destino * x_spacing)
 
-            # Verificar se destino é FIM
-            if destino.upper() == "FIM" or "FIM" in destino.upper():
+            # Verificar se é FIM
+            if "FIM" in atividade_destino.upper():
                 fim_key = f"fim_{idx}"
-                if fim_key not in nodes:
-                    nodes[fim_key] = {
+                nodes[fim_key] = {
+                    "id": node_id,
+                    "name": "Fim",
+                    "type": "end",
+                    "pos_x": x_destino,
+                    "pos_y": y_proc
+                }
+
+                connections.append({
+                    "from": proc_node_id,
+                    "to": node_id
+                })
+                node_id += 1
+            else:
+                # Atividade destino
+                destino_key = f"ativ_{atividade_destino}"
+
+                if atividade_destino not in atividade_info:
+                    # Criar nova atividade destino
+                    nodes[destino_key] = {
                         "id": node_id,
-                        "name": "Fim",
-                        "type": "end",
+                        "name": atividade_destino,
+                        "type": "activity",
                         "pos_x": x_destino,
                         "pos_y": y_proc
                     }
-                    node_id += 1
 
-                connections.append({
-                    "from": nodes[proc_key]["id"],
-                    "to": nodes[fim_key]["id"]
-                })
-            else:
-                # Atividade destino
-                if destino not in atividade_coluna:
-                    atividade_coluna[destino] = coluna_destino
-                    atividade_y_base[destino] = y_proc
-                    procedimentos_por_atividade[destino] = []
-
-                destino_key = f"ativ_{destino}"
-                if destino_key not in nodes:
-                    nodes[destino_key] = {
-                        "id": node_id,
-                        "name": destino,
-                        "type": "activity",
-                        "pos_x": x_destino,
-                        "pos_y": atividade_y_base[destino]
+                    atividade_info[atividade_destino] = {
+                        "coluna": coluna_destino,
+                        "y_base": y_proc,
+                        "node_id": node_id,
+                        "proc_count": 0
                     }
                     node_id += 1
 
+                # Conectar procedimento → atividade destino
                 connections.append({
-                    "from": nodes[proc_key]["id"],
-                    "to": nodes[destino_key]["id"]
+                    "from": proc_node_id,
+                    "to": atividade_info[atividade_destino]["node_id"]
                 })
 
     return {
