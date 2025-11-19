@@ -241,7 +241,7 @@
             border-width: 3px;
         }
 
-        /* LINHAS ORTOGONAIS (ÂNGULO RETO) COM SETAS VERDES */
+        /* SETAS VERDES COM LINHAS RETAS */
         .drawflow svg {
             will-change: transform;
             transform: translateZ(0);
@@ -252,9 +252,6 @@
             stroke-width: 2.5 !important;
             fill: none;
             transition: none;
-            /* Importante para linhas ortogonais */
-            stroke-linecap: square;
-            stroke-linejoin: miter;
         }
 
         .drawflow .connection {
@@ -422,20 +419,42 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leader-line@1.0.7/leader-line.min.js"></script>
     <script>
         const drawflowContainer = document.getElementById("drawflow");
         const editor = new Drawflow(drawflowContainer);
 
-        // CONFIGURAÇÕES PARA LINHAS ORTOGONAIS (QUEBRAS EM ÂNGULO RETO)
+        // CONFIGURAÇÃO BÁSICA DO DRAWFLOW
         editor.start();
         editor.editor_mode = 'edit';
         editor.reroute = true;
-        editor.reroute_fix_curvature = true; // Importante para quebras
+        editor.reroute_fix_curvature = true;
         editor.force_first_input = false;
+        editor.curvature = 0.5;
 
-        // ATIVAR LINHAS ORTOGONAIS - QUEBRAS EM ÂNGULO RETO
-        editor.line_path = 5; // 5 = step (linhas com quebras ortogonais)
-        editor.curvature = 0; // Sem curvas
+        // CUSTOMIZAR RENDERIZAÇÃO DAS CONEXÕES PARA FORÇAR LINHAS ORTOGONAIS
+        const originalCreateCurvature = editor.createCurvature.bind(editor);
+        editor.createCurvature = function(start_pos_x, start_pos_y, end_pos_x, end_pos_y, curvature_value, type) {
+            // Calcular ponto médio para quebra ortogonal
+            const midX = (start_pos_x + end_pos_x) / 2;
+
+            // Criar path SVG com linhas ortogonais (quebras em 90°)
+            let lineCurve = '';
+
+            // Se houver diferença significativa na vertical, fazer quebra
+            if (Math.abs(end_pos_y - start_pos_y) > 10) {
+                // Linha horizontal -> vertical -> horizontal
+                lineCurve = `M ${start_pos_x} ${start_pos_y} 
+                            L ${midX} ${start_pos_y} 
+                            L ${midX} ${end_pos_y} 
+                            L ${end_pos_x} ${end_pos_y}`;
+            } else {
+                // Linha horizontal direta se mesma altura
+                lineCurve = `M ${start_pos_x} ${start_pos_y} L ${end_pos_x} ${end_pos_y}`;
+            }
+
+            return lineCurve;
+        };
 
         let currentData = null;
         let isDragging = false;
