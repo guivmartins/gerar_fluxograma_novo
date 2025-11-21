@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fluxograma Interativo - Drawflow, múltiplos lados</title>
+  <title>Fluxograma Interativo - Drawflow</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.css">
   <style>
     body { font-family: 'Roboto', Arial, sans-serif; background: #f2f7fb; margin: 0; height: 100vh; }
@@ -12,7 +12,6 @@
     h1 { color: #00796B; font-size: 1.4em; margin: 8px 0; }
     .info { background: #e3f2fd; border-left: 4px solid #00796B; padding: 5px 10px; margin: 5px 0; border-radius: 6px; font-size: 0.95em; }
 
-    /* Upload compacto */
     .upload-section { border: 1px dashed #00796B; background: #f9f9f9; border-radius: 6px; padding: 6px 10px; margin: 6px 0; }
     .upload-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .upload-label { font-size: 12px; color: #00796B; margin-right: 6px; }
@@ -29,7 +28,6 @@
       linear-gradient(90deg, rgba(0,0,0,.045) 1px, transparent 1px);
       background-size: 20px 20px; position:relative; overflow:auto; width:100%;height:100%; }
 
-    /* Estilos dos nós - multipontos */
     .drawflow .drawflow-node { border:2px solid #bbb;background:#fff;min-width:116px;text-align:center;transition:.2s;box-shadow:0 1px 4px 0 #ccc;position:relative; }
     .drawflow .drawflow-node.selected {border-color:#00796B;box-shadow:0 0 15px #56b1a2b3;z-index:10;}
     .drawflow .drawflow-node.activity,.drawflow .drawflow-node.procedure {border-radius:10px;font-weight:600;}
@@ -37,23 +35,12 @@
     .drawflow .drawflow-node.procedure{background:linear-gradient(135deg,#E8E8E8,#D0D0D0);color:#154;}
     .drawflow .drawflow-node.start,.drawflow .drawflow-node.end{border-radius:50%;background:linear-gradient(135deg,#87C2BC,#6BA9A3);color:#004D40;font-size:11px;min-width:38px;width:60px!important;height:60px!important;padding:3px 2px;display:flex;align-items:center;justify-content:center;}
 
-    /* Inputs/outputs 4 lados */
-    .drawflow .input,
-    .drawflow .output {
-      width: 10px!important; height: 10px!important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute;
-    }
-    /* Posições: input_1=left, input_2=top, input_3=right, input_4=bottom
-                output_1=right, output_2=bottom, output_3=left, output_4=top */
-    .drawflow .input.input_1 { left: -6px; top: 50%; transform: translateY(-50%); }
-    .drawflow .input.input_2 { top: -6px; left:50%; transform:translateX(-50%); }
-    .drawflow .input.input_3 { right:-6px; top:50%; transform:translateY(-50%); }
-    .drawflow .input.input_4 { bottom:-6px; left:50%;transform:translateX(-50%); }
-    .drawflow .output.output_1 { right:-6px; top:50%; transform:translateY(-50%); }
-    .drawflow .output.output_2 { bottom:-6px; left:50%; transform:translateX(-50%); }
-    .drawflow .output.output_3 { left:-6px; top:50%; transform:translateY(-50%); }
-    .drawflow .output.output_4 { top:-6px; left:50%;transform:translateX(-50%); }
-    /* visual extra */
+    /* input/esquerda, output/direita apenas (1 de cada) */
+    .drawflow .input { width: 10px!important; height: 10px!important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute; left: -6px; top: 50%; transform: translateY(-50%);}
+    .drawflow .output { width: 10px!important; height: 10px!important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute; right:-6px; top:50%; transform:translateY(-50%);}
     .drawflow .input:hover,.drawflow .output:hover{background:#004D40;z-index:100;}
+    .drawflow .connection .main-path { stroke: #00796B !important; stroke-width: 2.5 !important; fill: none; stroke-linecap: square; stroke-linejoin: miter; }
+    .drawflow .main-path { marker-end: url(#arrowgreen); }
   </style>
 </head>
 <body>
@@ -62,7 +49,7 @@
     <h1>🔄 Gerador de Fluxograma Interativo</h1>
     <div class="info">
       Seu arquivo deve seguir as colunas: NOME PROCESSO, ATIVIDADE INÍCIO, ATIVIDADE ORIGEM, PROCEDIMENTO, ATIVIDADE DESTINO.<br>
-      <b>Atenção:</b> Saídas e entradas agora aceitam múltiplos lados.
+      <b>Entradas e saídas horizontais, sem portas múltiplas.</b>
     </div>
     <div class="upload-section compact" aria-label="Envio de arquivo Excel">
       <div class="upload-inline">
@@ -89,17 +76,12 @@
 <script>
 const drawflowContainer = document.getElementById('drawflow');
 const editor = new Drawflow(drawflowContainer);
-function toggleInfo(){ document.getElementById('info-content')?.classList.toggle('collapsed'); }
 function showError(msg){ const el=document.getElementById('error'); el.style.display='block'; el.textContent='❌ '+msg; setTimeout(()=>el.style.display='none',5000); }
 function showSuccess(msg){ const el=document.getElementById('success'); el.style.display='block'; el.textContent=msg; setTimeout(()=>el.style.display='none',5000); }
 editor.start();
 editor.editor_mode = 'edit'; editor.reroute = true; editor.reroute_fix_curvature = true; editor.force_first_input = false;
-editor.curvature = 0.5;
-editor.force_single_input = false;
-editor.force_single_output = false;
 
 // Linhas ortogonais
-const originalCreateCurvature = editor.createCurvature.bind(editor);
 editor.createCurvature = function(x0, y0, x1, y1){
   const midX = (x0 + x1) / 2;
   if (Math.abs(y1 - y0) > 10) {
@@ -146,27 +128,16 @@ function renderFluxograma(data){
   const nomeEl=document.getElementById('processo-nome');
   nomeEl.textContent='📊 '+data.nome_processo; nomeEl.style.display='block';
   const idmap={};
-  // Atividades: 4 inputs (esq, cima, dir, baixo) e 4 outputs (esq, cima, dir, baixo)
-  // Procedimentos: 4 inputs e 4 outputs (permitem caminhos de ambos os lados)
   data.nodes.forEach(n=>{
-    let nInputs=4, nOutputs=4;
-    if(n.type==='activity') { nInputs=4; nOutputs=4; }
-    else if(n.type==='procedure') { nInputs=4; nOutputs=4; }
-    else if(n.type==='start'||n.type==='end') { nInputs=1;nOutputs=1; }
     const html=`<div>${n.name}</div>`;
-    const nid=editor.addNode(n.type,nOutputs,nInputs,n.pos_x,n.pos_y,n.type,{},html,false);
+    const nid=editor.addNode(n.type, 1, 1, n.pos_x, n.pos_y, n.type, {}, html, false);
     idmap[n.id]=nid;
   });
   data.connections.forEach(c=>{
-    // Conectar no input/output default lado-direita ou esquerda
-    // (Drawflow usa output_1 -> input_1 padrão, a API permite especificar por lado)
-    const outPort = c.output_port || 'output_1';
-    const inPort = c.input_port || 'input_1';
-    if(idmap[c.from]&&idmap[c.to]) editor.addConnection(idmap[c.from], idmap[c.to], outPort, inPort);
+    if(idmap[c.from]&&idmap[c.to]) editor.addConnection(idmap[c.from], idmap[c.to], 'output_1', 'input_1');
   });
   setTimeout(()=>{ fixArrowDirections(); editor.zoom_reset(); }, 100);
 }
-
 function exportFluxograma(){if(!currentData){showError('Nenhum fluxograma para exportar');return;}const ex=editor.export();const s=JSON.stringify(ex,null,2);const b=new Blob([s],{type:'application/json'});const url=URL.createObjectURL(b);const a=document.createElement('a');a.href=url;a.download='fluxograma_'+Date.now()+'.json';a.click();URL.revokeObjectURL(url);showSuccess('✓ Exportado!');}
 function limparFluxograma(){if(!currentData){showError('Não há fluxograma para limpar');return;}if(confirm('Tem certeza que deseja limpar o fluxograma?')){editor.clear();document.getElementById('processo-nome').style.display='none';document.getElementById('controls').style.display='none';document.getElementById('excel_file').value='';currentData=null;showSuccess('✓ Limpo!');}}
 </script>
