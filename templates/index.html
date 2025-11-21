@@ -7,11 +7,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      width: 100vw; height: 100vh; overflow: hidden;
-    }
+    body { font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); width: 100vw; height: 100vh; overflow: hidden; }
     .container { width: 100%; height: 100%; background: white; display: flex; flex-direction: column; }
     .header { flex-shrink: 0; padding: 10px 14px; background: white; border-bottom: 2px solid #ddd; }
     h1 { color: #00796B; text-align: center; margin: 8px 0; font-size: 1.6em; text-shadow: 1px 1px 2px rgba(0,0,0,0.06); }
@@ -23,7 +19,7 @@
     .info ul { list-style-position: inside; color: #555; margin-top: 4px; font-size: 0.85em; }
     .info ul li { margin: 2px 0; }
 
-    /* Área de upload COMPACTA */
+    /* Upload compacto */
     .upload-section { border: 1px dashed #00796B; background: #f9f9f9; border-radius: 6px; padding: 6px 10px; margin: 6px 0; }
     .upload-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .upload-label { font-size: 12px; color: #00796B; margin-right: 6px; }
@@ -35,35 +31,19 @@
     .controls { padding: 8px; text-align: center; background: #f9f9f9; border-bottom: 1px solid #ddd; display: none; }
     .controls button { margin: 3px; padding: 6px 12px; font-size: 12px; }
 
-    #drawflow { flex: 1; width: 100%; position: relative; background: #fafafa; background-image:
-      linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
-      background-size: 20px 20px; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
+    #drawflow { flex: 1; width: 100%; position: relative; background: #fafafa; background-image: linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px); background-size: 20px 20px; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
 
-    /* Nós */
-    .drawflow .drawflow-node { border: 2px solid; padding: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); min-width: 150px; text-align: center; font-weight: 500; will-change: transform; transform: translateZ(0); backface-visibility: hidden; pointer-events: auto; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .drawflow .drawflow-node { border: 2px solid; padding: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); min-width: 150px; text-align: center; font-weight: 500; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .drawflow .drawflow-node.start, .drawflow .drawflow-node.end { border-radius: 50% !important; background: linear-gradient(135deg, #87C2BC 0%, #6BA9A3 100%); border-color: #00A896; color: #004D40; font-weight: bold; width: 60px !important; height: 60px !important; min-width: 60px !important; display: flex; align-items: center; justify-content: center; padding: 5px; font-size: 11px; }
     .drawflow .drawflow-node.activity { border-radius: 10px; background: linear-gradient(135deg, #00AE9D 0%, #008F81 100%); border-color: #006B5A; color: white; font-weight: bold; }
     .drawflow .drawflow-node.procedure { border-radius: 10px; background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%); border-color: #B0B0B0; color: #333; font-size: 13px; }
 
-    /* Conectores centralizados nas laterais */
     .drawflow .drawflow-node .input, .drawflow .drawflow-node .output { width: 8px !important; height: 8px !important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute; }
     .drawflow .drawflow-node .input { left: -4px; top: 50%; transform: translateY(-50%); }
     .drawflow .drawflow-node .output { right: -4px; top: 50%; transform: translateY(-50%); }
 
-    .drawflow.dragging .drawflow-node { transition: none !important; }
-    .drawflow.dragging .drawflow-node:hover { transform: none !important; box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important; }
-    .drawflow .drawflow-node:not(.dragging):hover { transform: scale(1.05); box-shadow: 0 6px 12px rgba(0,0,0,0.25); }
-    .drawflow-node.selected { box-shadow: 0 0 20px rgba(0,121,107,0.6); border-width: 3px; }
-
-    .drawflow svg { will-change: transform; transform: translateZ(0); }
-    .drawflow .connection .main-path { stroke: #00796B !important; stroke-width: 2.5 !important; fill: none; transition: none; stroke-linecap: square; stroke-linejoin: miter; }
+    .drawflow .connection .main-path { stroke: #00796B !important; stroke-width: 2.5 !important; fill: none; stroke-linecap: square; stroke-linejoin: miter; }
     .drawflow .main-path { marker-end: url(#arrowgreen); }
-
-    @media (max-width: 768px) {
-      .upload-inline { gap: 6px; }
-      .upload-section input[type="file"], .upload-section button { font-size: 11px; }
-    }
   </style>
 </head>
 <body>
@@ -86,7 +66,6 @@
         </div>
       </div>
 
-      <!-- Upload compacto -->
       <div class="upload-section compact" aria-label="Envio de arquivo Excel">
         <div class="upload-inline">
           <label for="excel_file" class="upload-label">📁 Arquivo Excel</label>
@@ -100,9 +79,9 @@
       <div class="success" id="success" style="display:none"></div>
     </div>
 
-    <div id="processo-nome"></div>
+    <div id="processo-nome" style="display:none"></div>
 
-    <div class="controls" id="controls">
+    <div class="controls" id="controls" style="display:none">
       <button onclick="editor.zoom_in()">🔍 Zoom +</button>
       <button onclick="editor.zoom_out()">🔍 Zoom -</button>
       <button onclick="editor.zoom_reset()">↺ Reset</button>
@@ -126,57 +105,72 @@
     const drawflowContainer = document.getElementById('drawflow');
     const editor = new Drawflow(drawflowContainer);
 
-    // Configuração básica
+    function toggleInfo(){ document.getElementById('info-content').classList.toggle('collapsed'); }
+    function showError(msg){ const el=document.getElementById('error'); el.style.display='block'; el.textContent='❌ '+msg; setTimeout(()=>el.style.display='none',5000); }
+    function showSuccess(msg){ const el=document.getElementById('success'); el.style.display='block'; el.textContent=msg; setTimeout(()=>el.style.display='none',5000); }
+
+    // Iniciar editor
     editor.start();
     editor.editor_mode = 'edit';
     editor.reroute = true;
     editor.reroute_fix_curvature = true;
     editor.force_first_input = false;
 
-    // Linhas ortogonais forçadas (quebras 90°)
+    // Linhas ortogonais (quebra 90°)
     const originalCreateCurvature = editor.createCurvature.bind(editor);
-    editor.createCurvature = function(start_pos_x, start_pos_y, end_pos_x, end_pos_y, curvature_value, type) {
-      const midX = (start_pos_x + end_pos_x) / 2;
-      if (Math.abs(end_pos_y - start_pos_y) > 10) {
-        return `M ${start_pos_x} ${start_pos_y} L ${midX} ${start_pos_y} L ${midX} ${end_pos_y} L ${end_pos_x} ${end_pos_y}`;
+    editor.createCurvature = function(x0, y0, x1, y1){
+      const midX = (x0 + x1) / 2;
+      if (Math.abs(y1 - y0) > 10) {
+        return `M ${x0} ${y0} L ${midX} ${y0} L ${midX} ${y1} L ${x1} ${y1}`;
       } else {
-        return `M ${start_pos_x} ${start_pos_y} L ${end_pos_x} ${end_pos_y}`;
+        return `M ${x0} ${y0} L ${x1} ${y1}`;
       }
     };
 
-    // Corrigir direção das setas considerando conexões de retorno
+    // Função ROBUSTA: seta apontando SEMPRE do origem para o destino, inclusive em retornos
     function fixArrowDirections(){
       const conns = document.querySelectorAll('.connection');
       conns.forEach(conn => {
         const path = conn.querySelector('.main-path');
         if (!path) return;
-        // Estilo base
         path.style.stroke = '#00796B';
         path.style.strokeWidth = '2.5';
 
-        // Buscar ids de origem/destino
         const outId = conn.getAttribute('data-node-out') || conn.dataset.nodeOut || conn.getAttribute('node-out');
         const inId  = conn.getAttribute('data-node-in')  || conn.dataset.nodeIn  || conn.getAttribute('node-in');
+        const setEnd = () => { path.removeAttribute('marker-start'); path.setAttribute('marker-end','url(#arrowgreen)'); };
+        const setStart = () => { path.setAttribute('marker-start','url(#arrowgreen)'); path.removeAttribute('marker-end'); };
+        if (!outId || !inId) { setEnd(); return; }
 
-        if (!outId || !inId) {
-          path.removeAttribute('marker-start');
-          path.setAttribute('marker-end', 'url(#arrowgreen)');
-          return;
-        }
         const src = editor.getNodeFromId(parseInt(outId));
         const dst = editor.getNodeFromId(parseInt(inId));
-        if (!src || !dst) {
-          path.removeAttribute('marker-start');
-          path.setAttribute('marker-end', 'url(#arrowgreen)');
-          return;
-        }
-        const backEdge = (dst.pos_x < src.pos_x); // destino à esquerda do origem
-        if (backEdge) {
-          path.setAttribute('marker-start', 'url(#arrowgreen)');
-          path.removeAttribute('marker-end');
+        if (!src || !dst) { setEnd(); return; }
+
+        // Extrair início e fim do path a partir do atributo d
+        const d = path.getAttribute('d');
+        if (!d) { setEnd(); return; }
+        const nums = d.match(/-?\d+\.?\d*/g);
+        if (!nums || nums.length < 4) { setEnd(); return; }
+        // Primeiro ponto após M
+        const startX = parseFloat(nums[0]);
+        const startY = parseFloat(nums[1]);
+        // Último ponto do path
+        const endX = parseFloat(nums[nums.length-2]);
+        const endY = parseFloat(nums[nums.length-1]);
+
+        // Aproximar posição do nó (top-left em pos_x/pos_y) e considerar que input fica na lateral esquerda do destino
+        const approxSrc = { x: src.pos_x, y: src.pos_y };
+        const approxDst = { x: dst.pos_x, y: dst.pos_y };
+
+        const dist = (ax, ay, bx, by) => Math.hypot(ax-bx, ay-by);
+        const endToDst   = dist(endX, endY, approxDst.x, approxDst.y);
+        const startToDst = dist(startX, startY, approxDst.x, approxDst.y);
+
+        // Se o fim do path está mais perto do destino, seta no fim; senão, no início
+        if (endToDst <= startToDst) {
+          setEnd();
         } else {
-          path.removeAttribute('marker-start');
-          path.setAttribute('marker-end', 'url(#arrowgreen)');
+          setStart();
         }
       });
     }
@@ -184,18 +178,15 @@
     editor.on('connectionCreated', function(){ setTimeout(fixArrowDirections, 50); });
     editor.on('nodeMoved', function(){ setTimeout(fixArrowDirections, 50); });
 
-    // Feedback UI
-    function toggleInfo(){ document.getElementById('info-content').classList.toggle('collapsed'); }
-    function showError(msg){ const el=document.getElementById('error'); el.style.display='block'; el.textContent='❌ '+msg; setTimeout(()=>el.style.display='none',5000); }
-    function showSuccess(msg){ const el=document.getElementById('success'); el.style.display='block'; el.textContent=msg; setTimeout(()=>el.style.display='none',5000); }
+    let currentData = null;
 
-    let currentData=null;
     async function uploadFile(){
       const fileInput=document.getElementById('excel_file');
       const file=fileInput.files[0];
       const loadingEl=document.getElementById('loading');
       if(!file){ showError('Selecione um arquivo Excel'); return; }
-      const valid=['.xlsx','.xls','.xlsm']; const ext='.'+file.name.split('.').pop().toLowerCase();
+      const valid=['.xlsx','.xls','.xlsm'];
+      const ext='.'+file.name.split('.').pop().toLowerCase();
       if(!valid.includes(ext)){ showError('Apenas .xlsx, .xls ou .xlsm'); return; }
       const formData=new FormData(); formData.append('excel_file',file);
       loadingEl.style.display='block';
@@ -225,9 +216,6 @@
     function exportFluxograma(){ if(!currentData){ showError('Nenhum fluxograma para exportar'); return; } const ex=editor.export(); const s=JSON.stringify(ex,null,2); const b=new Blob([s],{type:'application/json'}); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download='fluxograma_'+Date.now()+'.json'; a.click(); URL.revokeObjectURL(url); showSuccess('✓ Exportado!'); }
 
     function limparFluxograma(){ if(!currentData){ showError('Não há fluxograma para limpar'); return; } if(confirm('Tem certeza que deseja limpar o fluxograma?')){ editor.clear(); document.getElementById('processo-nome').style.display='none'; document.getElementById('controls').style.display='none'; document.getElementById('excel_file').value=''; currentData=null; showSuccess('✓ Limpo!'); } }
-
-    // Atalhos
-    document.addEventListener('keydown', (e)=>{ if(e.ctrlKey||e.metaKey){ if(e.key==='+'||e.key==='='){ e.preventDefault(); editor.zoom_in(); } else if(e.key==='-'){ e.preventDefault(); editor.zoom_out(); } else if(e.key==='0'){ e.preventDefault(); editor.zoom_reset(); } } });
   </script>
 </body>
 </html>
