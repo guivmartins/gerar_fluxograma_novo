@@ -3,219 +3,172 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fluxograma Interativo - Drawflow</title>
+  <title>Fluxograma Interativo - Drawflow, múltiplos lados</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); width: 100vw; height: 100vh; overflow: hidden; }
-    .container { width: 100%; height: 100%; background: white; display: flex; flex-direction: column; }
-    .header { flex-shrink: 0; padding: 10px 14px; background: white; border-bottom: 2px solid #ddd; }
-    h1 { color: #00796B; text-align: center; margin: 8px 0; font-size: 1.6em; text-shadow: 1px 1px 2px rgba(0,0,0,0.06); }
-
-    .info { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 8px 10px; border-radius: 6px; margin: 6px 0; border-left: 5px solid #00796B; font-size: 0.9em; }
-    .info h3 { color: #00796B; margin-bottom: 4px; font-size: 1em; cursor: pointer; user-select: none; }
-    .info-content { margin-top: 4px; }
-    .info-content.collapsed { display: none; }
-    .info ul { list-style-position: inside; color: #555; margin-top: 4px; font-size: 0.85em; }
-    .info ul li { margin: 2px 0; }
+    body { font-family: 'Roboto', Arial, sans-serif; background: #f2f7fb; margin: 0; height: 100vh; }
+    .container { width: 100vw; height: 100vh; display: flex; flex-direction: column; background: white; }
+    .header { padding: 8px 12px; border-bottom: 2px solid #ddd; text-align: center; background: white; }
+    h1 { color: #00796B; font-size: 1.4em; margin: 8px 0; }
+    .info { background: #e3f2fd; border-left: 4px solid #00796B; padding: 5px 10px; margin: 5px 0; border-radius: 6px; font-size: 0.95em; }
 
     /* Upload compacto */
     .upload-section { border: 1px dashed #00796B; background: #f9f9f9; border-radius: 6px; padding: 6px 10px; margin: 6px 0; }
     .upload-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .upload-label { font-size: 12px; color: #00796B; margin-right: 6px; }
     .upload-section input[type="file"] { padding: 6px 8px; font-size: 12px; border: 1px solid #00796B; border-radius: 4px; background: white; }
-    .upload-section button { background: linear-gradient(135deg, #00796B 0%, #004D40 100%); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; box-shadow: none; }
-    .upload-section button:hover { background: linear-gradient(135deg, #006B5A 0%, #003830 100%); }
+    .upload-section button { background: linear-gradient(135deg,#00796B,#004D40);color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;box-shadow:none; }
+    .upload-section button:hover { background: linear-gradient(135deg, #006B5A, #003830); }
 
-    #processo-nome { font-size: 18px; font-weight: bold; color: #00796B; padding: 8px; background: #f0f9f8; text-align: center; border-bottom: 2px solid #00796B; display: none; }
-    .controls { padding: 8px; text-align: center; background: #f9f9f9; border-bottom: 1px solid #ddd; display: none; }
-    .controls button { margin: 3px; padding: 6px 12px; font-size: 12px; }
+    .controls { text-align: center; background: #f9f9f9; border-bottom: 1px solid #ddd; padding: 7px; }
+    .controls button { margin: 2px; font-size: 12px; padding: 5px 11px; }
+    #processo-nome { text-align:center; color: #00796B; margin:6px 0; }
 
-    #drawflow { flex: 1; width: 100%; position: relative; background: #fafafa; background-image: linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px); background-size: 20px 20px; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
+    #drawflow { flex: 1; background: #fcfcfc; background-image:
+      linear-gradient(rgba(0,0,0,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,.045) 1px, transparent 1px);
+      background-size: 20px 20px; position:relative; overflow:auto; width:100%;height:100%; }
 
-    .drawflow .drawflow-node { border: 2px solid; padding: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); min-width: 150px; text-align: center; font-weight: 500; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .drawflow .drawflow-node.start, .drawflow .drawflow-node.end { border-radius: 50% !important; background: linear-gradient(135deg, #87C2BC 0%, #6BA9A3 100%); border-color: #00A896; color: #004D40; font-weight: bold; width: 60px !important; height: 60px !important; min-width: 60px !important; display: flex; align-items: center; justify-content: center; padding: 5px; font-size: 11px; }
-    .drawflow .drawflow-node.activity { border-radius: 10px; background: linear-gradient(135deg, #00AE9D 0%, #008F81 100%); border-color: #006B5A; color: white; font-weight: bold; }
-    .drawflow .drawflow-node.procedure { border-radius: 10px; background: linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%); border-color: #B0B0B0; color: #333; font-size: 13px; }
+    /* Estilos dos nós - multipontos */
+    .drawflow .drawflow-node { border:2px solid #bbb;background:#fff;min-width:116px;text-align:center;transition:.2s;box-shadow:0 1px 4px 0 #ccc;position:relative; }
+    .drawflow .drawflow-node.selected {border-color:#00796B;box-shadow:0 0 15px #56b1a2b3;z-index:10;}
+    .drawflow .drawflow-node.activity,.drawflow .drawflow-node.procedure {border-radius:10px;font-weight:600;}
+    .drawflow .drawflow-node.activity{background:linear-gradient(135deg,#00AE9D,#008F81);color:white;}
+    .drawflow .drawflow-node.procedure{background:linear-gradient(135deg,#E8E8E8,#D0D0D0);color:#154;}
+    .drawflow .drawflow-node.start,.drawflow .drawflow-node.end{border-radius:50%;background:linear-gradient(135deg,#87C2BC,#6BA9A3);color:#004D40;font-size:11px;min-width:38px;width:60px!important;height:60px!important;padding:3px 2px;display:flex;align-items:center;justify-content:center;}
 
-    .drawflow .drawflow-node .input, .drawflow .drawflow-node .output { width: 8px !important; height: 8px !important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute; }
-    .drawflow .drawflow-node .input { left: -4px; top: 50%; transform: translateY(-50%); }
-    .drawflow .drawflow-node .output { right: -4px; top: 50%; transform: translateY(-50%); }
-
-    .drawflow .connection .main-path { stroke: #00796B !important; stroke-width: 2.5 !important; fill: none; stroke-linecap: square; stroke-linejoin: miter; }
-    .drawflow .main-path { marker-end: url(#arrowgreen); }
+    /* Inputs/outputs 4 lados */
+    .drawflow .input,
+    .drawflow .output {
+      width: 10px!important; height: 10px!important; border-radius: 50%; background: #00796B; border: 2px solid white; position: absolute;
+    }
+    /* Posições: input_1=left, input_2=top, input_3=right, input_4=bottom
+                output_1=right, output_2=bottom, output_3=left, output_4=top */
+    .drawflow .input.input_1 { left: -6px; top: 50%; transform: translateY(-50%); }
+    .drawflow .input.input_2 { top: -6px; left:50%; transform:translateX(-50%); }
+    .drawflow .input.input_3 { right:-6px; top:50%; transform:translateY(-50%); }
+    .drawflow .input.input_4 { bottom:-6px; left:50%;transform:translateX(-50%); }
+    .drawflow .output.output_1 { right:-6px; top:50%; transform:translateY(-50%); }
+    .drawflow .output.output_2 { bottom:-6px; left:50%; transform:translateX(-50%); }
+    .drawflow .output.output_3 { left:-6px; top:50%; transform:translateY(-50%); }
+    .drawflow .output.output_4 { top:-6px; left:50%;transform:translateX(-50%); }
+    /* visual extra */
+    .drawflow .input:hover,.drawflow .output:hover{background:#004D40;z-index:100;}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>🔄 Gerador de Fluxograma Interativo</h1>
-
-      <div class="info">
-        <h3 onclick="toggleInfo()">📋 Colunas Obrigatórias (clique para expandir/recolher)</h3>
-        <div class="info-content collapsed" id="info-content">
-          <p>Para gerar o fluxograma corretamente, seu arquivo Excel deve conter as seguintes colunas:</p>
-          <ul>
-            <li><strong>NOME PROCESSO</strong></li>
-            <li><strong>ATIVIDADE INÍCIO</strong></li>
-            <li><strong>ATIVIDADE ORIGEM</strong></li>
-            <li><strong>PROCEDIMENTO</strong></li>
-            <li><strong>ATIVIDADE DESTINO</strong></li>
-          </ul>
-          <p style="margin-top: 5px; font-weight: bold;">⚠️ Formatos aceitos: <strong>.xlsx, .xls, .xlsm</strong></p>
-        </div>
+<div class="container">
+  <div class="header">
+    <h1>🔄 Gerador de Fluxograma Interativo</h1>
+    <div class="info">
+      Seu arquivo deve seguir as colunas: NOME PROCESSO, ATIVIDADE INÍCIO, ATIVIDADE ORIGEM, PROCEDIMENTO, ATIVIDADE DESTINO.<br>
+      <b>Atenção:</b> Saídas e entradas agora aceitam múltiplos lados.
+    </div>
+    <div class="upload-section compact" aria-label="Envio de arquivo Excel">
+      <div class="upload-inline">
+        <label for="excel_file" class="upload-label">📁 Arquivo Excel</label>
+        <input type="file" id="excel_file" accept=".xlsx,.xls,.xlsm" required>
+        <button type="button" onclick="uploadFile()">Gerar</button>
       </div>
-
-      <div class="upload-section compact" aria-label="Envio de arquivo Excel">
-        <div class="upload-inline">
-          <label for="excel_file" class="upload-label">📁 Arquivo Excel</label>
-          <input type="file" id="excel_file" accept=".xlsx,.xls,.xlsm" required>
-          <button type="button" onclick="uploadFile()" title="Gerar fluxograma">Gerar</button>
-        </div>
-      </div>
-
-      <div class="loading" id="loading" style="display:none">⏳ Processando arquivo...</div>
-      <div class="error" id="error" style="display:none"></div>
-      <div class="success" id="success" style="display:none"></div>
     </div>
-
-    <div id="processo-nome" style="display:none"></div>
-
-    <div class="controls" id="controls" style="display:none">
-      <button onclick="editor.zoom_in()">🔍 Zoom +</button>
-      <button onclick="editor.zoom_out()">🔍 Zoom -</button>
-      <button onclick="editor.zoom_reset()">↺ Reset</button>
-      <button onclick="exportFluxograma()">💾 Exportar</button>
-      <button onclick="limparFluxograma()">🗑️ Limpar</button>
-    </div>
-
-    <div id="drawflow">
-      <svg style="position: absolute; width: 0; height: 0;">
-        <defs>
-          <marker id="arrowgreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-            <path d="M2,2 L2,10 L10,6 Z" fill="#00796B" />
-          </marker>
-        </defs>
-      </svg>
-    </div>
+    <div class="loading" id="loading" style="display:none">⏳ Processando arquivo...</div>
+    <div class="error" id="error" style="display:none"></div>
+    <div class="success" id="success" style="display:none"></div>
   </div>
+  <div id="processo-nome" style="display:none"></div>
+  <div class="controls" id="controls" style="display:none">
+    <button onclick="editor.zoom_in()">🔍 Zoom +</button>
+    <button onclick="editor.zoom_out()">🔍 Zoom -</button>
+    <button onclick="editor.zoom_reset()">↺ Reset</button>
+    <button onclick="exportFluxograma()">💾 Exportar</button>
+    <button onclick="limparFluxograma()">🗑️ Limpar</button>
+  </div>
+  <div id="drawflow"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
+<script>
+const drawflowContainer = document.getElementById('drawflow');
+const editor = new Drawflow(drawflowContainer);
+function toggleInfo(){ document.getElementById('info-content')?.classList.toggle('collapsed'); }
+function showError(msg){ const el=document.getElementById('error'); el.style.display='block'; el.textContent='❌ '+msg; setTimeout(()=>el.style.display='none',5000); }
+function showSuccess(msg){ const el=document.getElementById('success'); el.style.display='block'; el.textContent=msg; setTimeout(()=>el.style.display='none',5000); }
+editor.start();
+editor.editor_mode = 'edit'; editor.reroute = true; editor.reroute_fix_curvature = true; editor.force_first_input = false;
+editor.curvature = 0.5;
+editor.force_single_input = false;
+editor.force_single_output = false;
 
-  <script src="https://cdn.jsdelivr.net/npm/drawflow@0.0.60/dist/drawflow.min.js"></script>
-  <script>
-    const drawflowContainer = document.getElementById('drawflow');
-    const editor = new Drawflow(drawflowContainer);
+// Linhas ortogonais
+const originalCreateCurvature = editor.createCurvature.bind(editor);
+editor.createCurvature = function(x0, y0, x1, y1){
+  const midX = (x0 + x1) / 2;
+  if (Math.abs(y1 - y0) > 10) {
+    return `M ${x0} ${y0} L ${midX} ${y0} L ${midX} ${y1} L ${x1} ${y1}`;
+  } else {
+    return `M ${x0} ${y0} L ${x1} ${y1}`;
+  }
+};
 
-    function toggleInfo(){ document.getElementById('info-content').classList.toggle('collapsed'); }
-    function showError(msg){ const el=document.getElementById('error'); el.style.display='block'; el.textContent='❌ '+msg; setTimeout(()=>el.style.display='none',5000); }
-    function showSuccess(msg){ const el=document.getElementById('success'); el.style.display='block'; el.textContent=msg; setTimeout(()=>el.style.display='none',5000); }
+function fixArrowDirections(){
+  const conns = document.querySelectorAll('.connection');
+  conns.forEach(conn => {
+    const path = conn.querySelector('.main-path');
+    if (!path) return;
+    path.style.stroke = '#00796B'; path.style.strokeWidth = '2.5';
+    path.removeAttribute('marker-start'); path.setAttribute('marker-end','url(#arrowgreen)');
+  });
+}
+editor.on('connectionCreated', function(){ setTimeout(fixArrowDirections, 50); });
+editor.on('nodeMoved', function(){ setTimeout(fixArrowDirections, 50); });
 
-    // Iniciar editor
-    editor.start();
-    editor.editor_mode = 'edit';
-    editor.reroute = true;
-    editor.reroute_fix_curvature = true;
-    editor.force_first_input = false;
+let currentData = null;
 
-    // Linhas ortogonais (quebra 90°)
-    const originalCreateCurvature = editor.createCurvature.bind(editor);
-    editor.createCurvature = function(x0, y0, x1, y1){
-      const midX = (x0 + x1) / 2;
-      if (Math.abs(y1 - y0) > 10) {
-        return `M ${x0} ${y0} L ${midX} ${y0} L ${midX} ${y1} L ${x1} ${y1}`;
-      } else {
-        return `M ${x0} ${y0} L ${x1} ${y1}`;
-      }
-    };
+async function uploadFile(){
+  const fileInput=document.getElementById('excel_file');
+  const file=fileInput.files[0];
+  const loadingEl=document.getElementById('loading');
+  if(!file){ showError('Selecione um arquivo Excel'); return; }
+  const valid=['.xlsx','.xls','.xlsm']; const ext='.'+file.name.split('.').pop().toLowerCase();
+  if(!valid.includes(ext)){ showError('Apenas .xlsx, .xls ou .xlsm'); return; }
+  const formData=new FormData(); formData.append('excel_file',file);
+  loadingEl.style.display='block';
+  try{
+    const resp=await fetch('/api/fluxograma',{method:'POST',body:formData});
+    const data=await resp.json(); if(!resp.ok) throw new Error(data.error||'Erro ao processar');
+    currentData=data; renderFluxograma(data); document.getElementById('controls').style.display='block';
+    showSuccess('✓ Fluxograma gerado!');
+  }catch(e){ showError('Erro ao gerar fluxograma: '+e.message); }
+  finally{ loadingEl.style.display='none'; }
+}
 
-    // Função ROBUSTA: seta apontando SEMPRE do origem para o destino, inclusive em retornos
-    function fixArrowDirections(){
-      const conns = document.querySelectorAll('.connection');
-      conns.forEach(conn => {
-        const path = conn.querySelector('.main-path');
-        if (!path) return;
-        path.style.stroke = '#00796B';
-        path.style.strokeWidth = '2.5';
+function renderFluxograma(data){
+  editor.clear();
+  const nomeEl=document.getElementById('processo-nome');
+  nomeEl.textContent='📊 '+data.nome_processo; nomeEl.style.display='block';
+  const idmap={};
+  // Atividades: 4 inputs (esq, cima, dir, baixo) e 4 outputs (esq, cima, dir, baixo)
+  // Procedimentos: 4 inputs e 4 outputs (permitem caminhos de ambos os lados)
+  data.nodes.forEach(n=>{
+    let nInputs=4, nOutputs=4;
+    if(n.type==='activity') { nInputs=4; nOutputs=4; }
+    else if(n.type==='procedure') { nInputs=4; nOutputs=4; }
+    else if(n.type==='start'||n.type==='end') { nInputs=1;nOutputs=1; }
+    const html=`<div>${n.name}</div>`;
+    const nid=editor.addNode(n.type,nOutputs,nInputs,n.pos_x,n.pos_y,n.type,{},html,false);
+    idmap[n.id]=nid;
+  });
+  data.connections.forEach(c=>{
+    // Conectar no input/output default lado-direita ou esquerda
+    // (Drawflow usa output_1 -> input_1 padrão, a API permite especificar por lado)
+    const outPort = c.output_port || 'output_1';
+    const inPort = c.input_port || 'input_1';
+    if(idmap[c.from]&&idmap[c.to]) editor.addConnection(idmap[c.from], idmap[c.to], outPort, inPort);
+  });
+  setTimeout(()=>{ fixArrowDirections(); editor.zoom_reset(); }, 100);
+}
 
-        const outId = conn.getAttribute('data-node-out') || conn.dataset.nodeOut || conn.getAttribute('node-out');
-        const inId  = conn.getAttribute('data-node-in')  || conn.dataset.nodeIn  || conn.getAttribute('node-in');
-        const setEnd = () => { path.removeAttribute('marker-start'); path.setAttribute('marker-end','url(#arrowgreen)'); };
-        const setStart = () => { path.setAttribute('marker-start','url(#arrowgreen)'); path.removeAttribute('marker-end'); };
-        if (!outId || !inId) { setEnd(); return; }
-
-        const src = editor.getNodeFromId(parseInt(outId));
-        const dst = editor.getNodeFromId(parseInt(inId));
-        if (!src || !dst) { setEnd(); return; }
-
-        // Extrair início e fim do path a partir do atributo d
-        const d = path.getAttribute('d');
-        if (!d) { setEnd(); return; }
-        const nums = d.match(/-?\d+\.?\d*/g);
-        if (!nums || nums.length < 4) { setEnd(); return; }
-        // Primeiro ponto após M
-        const startX = parseFloat(nums[0]);
-        const startY = parseFloat(nums[1]);
-        // Último ponto do path
-        const endX = parseFloat(nums[nums.length-2]);
-        const endY = parseFloat(nums[nums.length-1]);
-
-        // Aproximar posição do nó (top-left em pos_x/pos_y) e considerar que input fica na lateral esquerda do destino
-        const approxSrc = { x: src.pos_x, y: src.pos_y };
-        const approxDst = { x: dst.pos_x, y: dst.pos_y };
-
-        const dist = (ax, ay, bx, by) => Math.hypot(ax-bx, ay-by);
-        const endToDst   = dist(endX, endY, approxDst.x, approxDst.y);
-        const startToDst = dist(startX, startY, approxDst.x, approxDst.y);
-
-        // Se o fim do path está mais perto do destino, seta no fim; senão, no início
-        if (endToDst <= startToDst) {
-          setEnd();
-        } else {
-          setStart();
-        }
-      });
-    }
-
-    editor.on('connectionCreated', function(){ setTimeout(fixArrowDirections, 50); });
-    editor.on('nodeMoved', function(){ setTimeout(fixArrowDirections, 50); });
-
-    let currentData = null;
-
-    async function uploadFile(){
-      const fileInput=document.getElementById('excel_file');
-      const file=fileInput.files[0];
-      const loadingEl=document.getElementById('loading');
-      if(!file){ showError('Selecione um arquivo Excel'); return; }
-      const valid=['.xlsx','.xls','.xlsm'];
-      const ext='.'+file.name.split('.').pop().toLowerCase();
-      if(!valid.includes(ext)){ showError('Apenas .xlsx, .xls ou .xlsm'); return; }
-      const formData=new FormData(); formData.append('excel_file',file);
-      loadingEl.style.display='block';
-      try{
-        const resp=await fetch('/api/fluxograma',{method:'POST',body:formData});
-        const data=await resp.json(); if(!resp.ok) throw new Error(data.error||'Erro ao processar');
-        currentData=data; renderFluxograma(data); document.getElementById('controls').style.display='block';
-        showSuccess('✓ Fluxograma gerado!');
-      }catch(e){ showError('Erro ao gerar fluxograma: '+e.message); }
-      finally{ loadingEl.style.display='none'; }
-    }
-
-    function renderFluxograma(data){
-      editor.clear();
-      const nomeEl=document.getElementById('processo-nome');
-      nomeEl.textContent='📊 '+data.nome_processo; nomeEl.style.display='block';
-      const idmap={};
-      data.nodes.forEach(n=>{
-        const html=`<div>${n.name}</div>`;
-        const nid=editor.addNode(n.type,1,1,n.pos_x,n.pos_y,n.type,{},html,false);
-        idmap[n.id]=nid;
-      });
-      data.connections.forEach(c=>{ if(idmap[c.from]&&idmap[c.to]) editor.addConnection(idmap[c.from], idmap[c.to], 'output_1','input_1'); });
-      setTimeout(()=>{ fixArrowDirections(); editor.zoom_reset(); }, 100);
-    }
-
-    function exportFluxograma(){ if(!currentData){ showError('Nenhum fluxograma para exportar'); return; } const ex=editor.export(); const s=JSON.stringify(ex,null,2); const b=new Blob([s],{type:'application/json'}); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download='fluxograma_'+Date.now()+'.json'; a.click(); URL.revokeObjectURL(url); showSuccess('✓ Exportado!'); }
-
-    function limparFluxograma(){ if(!currentData){ showError('Não há fluxograma para limpar'); return; } if(confirm('Tem certeza que deseja limpar o fluxograma?')){ editor.clear(); document.getElementById('processo-nome').style.display='none'; document.getElementById('controls').style.display='none'; document.getElementById('excel_file').value=''; currentData=null; showSuccess('✓ Limpo!'); } }
-  </script>
+function exportFluxograma(){if(!currentData){showError('Nenhum fluxograma para exportar');return;}const ex=editor.export();const s=JSON.stringify(ex,null,2);const b=new Blob([s],{type:'application/json'});const url=URL.createObjectURL(b);const a=document.createElement('a');a.href=url;a.download='fluxograma_'+Date.now()+'.json';a.click();URL.revokeObjectURL(url);showSuccess('✓ Exportado!');}
+function limparFluxograma(){if(!currentData){showError('Não há fluxograma para limpar');return;}if(confirm('Tem certeza que deseja limpar o fluxograma?')){editor.clear();document.getElementById('processo-nome').style.display='none';document.getElementById('controls').style.display='none';document.getElementById('excel_file').value='';currentData=null;showSuccess('✓ Limpo!');}}
+</script>
 </body>
 </html>
