@@ -28,7 +28,7 @@ def wrap_label(text, max_len=15):
     return "\n".join(textwrap.wrap(text, max_len))
 
 def detectar_encoding(filepath):
-    """Detecta o encoding de um arquivo (usado como fallback)"""
+    """Detecta o encoding de um arquivo"""
     try:
         with open(filepath, 'rb') as f:
             resultado = chardet.detect(f.read())
@@ -37,43 +37,39 @@ def detectar_encoding(filepath):
         return 'utf-8'
 
 def ler_excel_com_encoding(filepath):
-    """
-    Lê arquivo Excel com suporte a múltiplos formatos e tratamento de encoding.
-    Suporta: .xlsx, .xls, .xlsm
-    """
+    """Lê arquivo Excel com suporte a múltiplos formatos"""
     file_extension = os.path.splitext(filepath)[1].lower()
 
     try:
         if file_extension in ['.xlsx', '.xlsm']:
             df = pd.read_excel(filepath, engine='openpyxl')
             return df
-
         elif file_extension == '.xls':
             try:
                 df = pd.read_excel(filepath, engine='xlrd')
                 return df
-            except Exception as e:
-                print(f"⚠️ Aviso: xlrd falhou, tentando openpyxl: {str(e)}")
+            except Exception:
                 df = pd.read_excel(filepath, engine='openpyxl')
                 return df
-
         else:
             raise ValueError(f"Formato não suportado: {file_extension}")
-
-    except UnicodeDecodeError as e:
-        print(f"⚠️ Erro de encoding detectado: {str(e)}")
+    except UnicodeDecodeError:
         encoding_detectado = detectar_encoding(filepath)
-        print(f"🔍 Encoding detectado: {encoding_detectado}")
         df = pd.read_excel(filepath, encoding=encoding_detectado)
         return df
-
     except Exception as e:
-        raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}. Verifique se o arquivo não está corrompido.")
+        raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}")
 
 def processar_para_drawflow(filepath):
     """
-    Processar Excel e retornar dados para Drawflow com layout em CASCATA.
-    CORRIGIDO: Evita sobreposição e garante círculos FIM
+    Layout em CASCATA CORRETO:
+    Col 1: Início
+    Col 2: Atividades
+    Col 3: Procedimentos + Fins
+    Col 4: Atividades destino
+    Col 5: Procedimentos + Fins
+    Col 6: Atividades destino
+    ...
     """
     df = ler_excel_com_encoding(filepath)
 
@@ -87,7 +83,7 @@ def processar_para_drawflow(filepath):
 
     for col in colunas_necessarias:
         if col not in df.columns:
-            raise ValueError(f"❌ Coluna obrigatória ausente no Excel: {col}")
+            raise ValueError(f"❌ Coluna obrigatória ausente: {col}")
 
     nome_processo = str(df["NOME PROCESSO"].dropna().unique()[0]).strip()
 
@@ -95,109 +91,100 @@ def processar_para_drawflow(filepath):
     connections = []
     node_id = 1
 
-    # ESPAÇAMENTO AUMENTADO para evitar sobreposição
-    x_spacing = 280  # Aumentado de 250 para 280
-    y_spacing = 140  # Aumentado de 120 para 140
+    # Espaçamento
+    x_spacing = 280
+    y_spacing = 140
 
-    # Rastrear posições Y usadas por coluna para evitar sobreposição
-    coluna_y_max = {}  # {coluna: maior_y_usado}
+    # Rastrear Y por coluna para evitar sobreposição
+    coluna_y_atual = {}
 
-    # Rastrear atividades
-    atividade_info = {}  # {nome: {"coluna": X, "y": Y, "node_id": ID}}
+    # Rastrear em qual coluna cada atividade está
+    atividade_para_coluna = {}
+    atividade_para_node_id = {}
 
-    # PASSO 1: Criar nó de INÍCIO
-    y_atual = 50
+    def get_next_y(coluna):
+        """Retorna próximo Y disponível para uma coluna"""
+        if coluna not in coluna_y_atual:
+            coluna_y_atual[coluna] = 50
+        else:
+            coluna_y_atual[coluna] += y_spacing
+        return coluna_y_atual[coluna]
+
+    # COLUNA 1: Nó INÍCIO
+    y_inicio = get_next_y(1)
     inicio_key = "inicio"
     nodes[inicio_key] = {
         "id": node_id,
         "name": "Início",
         "type": "start",
         "pos_x": 50,
-        "pos_y": y_atual
+        "pos_y": y_inicio
     }
     inicio_id = node_id
     node_id += 1
-    coluna_y_max[0] = y_atual
 
-    # PASSO 2: Identificar e criar atividade inicial
+    # COLUNA 2: Atividade inicial
     df_inicio = df[df["ATIVIDADE INÍCIO"].str.strip().str.upper() == "SIM"]
 
     if not df_inicio.empty:
         atividade_inicial = str(df_inicio.iloc[0]["ATIVIDADE ORIGEM"]).strip()
-        y_atual += y_spacing
 
+        y_ativ = get_next_y(2)
         ativ_key = f"ativ_{atividade_inicial}"
         nodes[ativ_key] = {
             "id": node_id,
             "name": atividade_inicial,
             "type": "activity",
-            "pos_x": 50,
-            "pos_y": y_atual
+            "pos_x": 50 + (1 * x_spacing),  # Coluna 2
+            "pos_y": y_ativ
         }
 
-        atividade_info[atividade_inicial] = {
-            "coluna": 0,
-            "y": y_atual,
-            "node_id": node_id
-        }
+        atividade_para_coluna[atividade_inicial] = 2
+        atividade_para_node_id[atividade_inicial] = node_id
 
         connections.append({
             "from": inicio_id,
             "to": node_id
         })
-
-        coluna_y_max[0] = y_atual
         node_id += 1
 
-    # PASSO 3: Processar cada linha
+    # Processar todas as linhas
     for idx, row in df.iterrows():
         atividade_origem = str(row["ATIVIDADE ORIGEM"]).strip()
         procedimento = str(row["PROCEDIMENTO"]).strip()
         destino_raw = row["ATIVIDADE DESTINO"]
-        atividade_destino = str(destino_raw).strip() if pd.notna(destino_raw) and str(destino_raw).strip() != "" else None
+        atividade_destino = str(destino_raw).strip() if pd.notna(destino_raw) and str(destino_raw).strip() else None
 
-        # Garantir que atividade origem existe
-        if atividade_origem not in atividade_info:
-            # Criar em nova posição Y para evitar sobreposição
-            coluna_nova = 0
-            if coluna_nova not in coluna_y_max:
-                coluna_y_max[coluna_nova] = 50
+        # Garantir que atividade origem existe e obter sua coluna
+        if atividade_origem not in atividade_para_coluna:
+            # Criar atividade em coluna PAR (2, 4, 6...)
+            # Encontrar próxima coluna par disponível
+            colunas_usadas = list(atividade_para_coluna.values())
+            proxima_coluna_par = 2
+            while proxima_coluna_par in colunas_usadas:
+                proxima_coluna_par += 2
 
-            y_nova = coluna_y_max[coluna_nova] + y_spacing
-
+            y_ativ = get_next_y(proxima_coluna_par)
             ativ_key = f"ativ_{atividade_origem}"
             nodes[ativ_key] = {
                 "id": node_id,
                 "name": atividade_origem,
                 "type": "activity",
-                "pos_x": 50 + (coluna_nova * x_spacing),
-                "pos_y": y_nova
+                "pos_x": 50 + ((proxima_coluna_par - 1) * x_spacing),
+                "pos_y": y_ativ
             }
 
-            atividade_info[atividade_origem] = {
-                "coluna": coluna_nova,
-                "y": y_nova,
-                "node_id": node_id
-            }
-
-            coluna_y_max[coluna_nova] = y_nova
+            atividade_para_coluna[atividade_origem] = proxima_coluna_par
+            atividade_para_node_id[atividade_origem] = node_id
             node_id += 1
 
-        # Info da atividade origem
-        info_origem = atividade_info[atividade_origem]
-        coluna_ativ = info_origem["coluna"]
-        ativ_node_id = info_origem["node_id"]
+        coluna_atividade = atividade_para_coluna[atividade_origem]
+        atividade_node_id = atividade_para_node_id[atividade_origem]
 
-        # PROCEDIMENTO (coluna seguinte)
-        coluna_proc = coluna_ativ + 1
-        x_proc = 50 + (coluna_proc * x_spacing)
-
-        # Y do procedimento: usar próxima posição disponível na coluna
-        if coluna_proc not in coluna_y_max:
-            coluna_y_max[coluna_proc] = 50
-
-        y_proc = coluna_y_max[coluna_proc] + y_spacing
-        coluna_y_max[coluna_proc] = y_proc
+        # PROCEDIMENTO: coluna ÍMPAR seguinte (col_ativ + 1)
+        coluna_proc = coluna_atividade + 1  # 3, 5, 7...
+        y_proc = get_next_y(coluna_proc)
+        x_proc = 50 + ((coluna_proc - 1) * x_spacing)
 
         proc_key = f"proc_{idx}"
         nodes[proc_key] = {
@@ -212,24 +199,21 @@ def processar_para_drawflow(filepath):
 
         # Conectar atividade → procedimento
         connections.append({
-            "from": ativ_node_id,
+            "from": atividade_node_id,
             "to": proc_node_id
         })
 
-        # DESTINO (coluna seguinte ao procedimento)
-        coluna_destino = coluna_proc + 1
-        x_destino = 50 + (coluna_destino * x_spacing)
-
+        # DESTINO
         if atividade_destino:
-            # Verificar se é FIM - CORRIGIDO: verificação mais robusta
+            # Verificar se é FIM
             if atividade_destino.upper() in ["FIM", "FINAL", "END"]:
-                # Criar círculo FIM
+                # FIM: mesma coluna do procedimento (ímpar)
                 fim_key = f"fim_{idx}"
                 nodes[fim_key] = {
                     "id": node_id,
                     "name": "Fim",
                     "type": "end",
-                    "pos_x": x_destino,
+                    "pos_x": x_proc,  # Mesma coluna do procedimento
                     "pos_y": y_proc
                 }
 
@@ -238,19 +222,16 @@ def processar_para_drawflow(filepath):
                     "to": node_id
                 })
                 node_id += 1
-
             else:
-                # Atividade destino normal
-                destino_key = f"ativ_{atividade_destino}"
+                # Atividade destino: coluna PAR seguinte (col_proc + 1)
+                coluna_destino = coluna_proc + 1  # 4, 6, 8...
 
-                if atividade_destino not in atividade_info:
-                    # Y do destino: usar próxima posição disponível
-                    if coluna_destino not in coluna_y_max:
-                        coluna_y_max[coluna_destino] = 50
+                if atividade_destino not in atividade_para_coluna:
+                    # Criar nova atividade destino
+                    y_destino = get_next_y(coluna_destino)
+                    x_destino = 50 + ((coluna_destino - 1) * x_spacing)
 
-                    y_destino = coluna_y_max[coluna_destino] + y_spacing
-                    coluna_y_max[coluna_destino] = y_destino
-
+                    destino_key = f"ativ_{atividade_destino}"
                     nodes[destino_key] = {
                         "id": node_id,
                         "name": atividade_destino,
@@ -259,26 +240,23 @@ def processar_para_drawflow(filepath):
                         "pos_y": y_destino
                     }
 
-                    atividade_info[atividade_destino] = {
-                        "coluna": coluna_destino,
-                        "y": y_destino,
-                        "node_id": node_id
-                    }
+                    atividade_para_coluna[atividade_destino] = coluna_destino
+                    atividade_para_node_id[atividade_destino] = node_id
                     node_id += 1
 
                 # Conectar procedimento → atividade destino
                 connections.append({
                     "from": proc_node_id,
-                    "to": atividade_info[atividade_destino]["node_id"]
+                    "to": atividade_para_node_id[atividade_destino]
                 })
         else:
-            # Sem destino = criar FIM automaticamente
+            # Sem destino = FIM automático
             fim_key = f"fim_auto_{idx}"
             nodes[fim_key] = {
                 "id": node_id,
                 "name": "Fim",
                 "type": "end",
-                "pos_x": x_destino,
+                "pos_x": x_proc,  # Mesma coluna do procedimento
                 "pos_y": y_proc
             }
 
@@ -295,7 +273,7 @@ def processar_para_drawflow(filepath):
     }
 
 def gerar_fluxograma(filepath):
-    """Função original para gerar imagens estáticas com Graphviz"""
+    """Função para gerar imagens estáticas com Graphviz"""
     df = ler_excel_com_encoding(filepath)
 
     colunas_necessarias = [
@@ -308,7 +286,7 @@ def gerar_fluxograma(filepath):
 
     for col in colunas_necessarias:
         if col not in df.columns:
-            raise ValueError(f"❌ Coluna obrigatória ausente no Excel: {col}")
+            raise ValueError(f"❌ Coluna obrigatória ausente: {col}")
 
     nome_processo = str(df["NOME PROCESSO"].dropna().unique()[0]).strip()
 
