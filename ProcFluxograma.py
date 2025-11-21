@@ -34,10 +34,6 @@ def ler_excel_com_encoding(filepath):
         raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}")
 
 def processar_para_drawflow(filepath):
-    '''
-    Gera o dicionário com nodes e connections.
-    Opcional: inclui input_port/output_port em cada conexão (para Drawflow multiponto).
-    '''
     df = ler_excel_com_encoding(filepath)
     colunas_necessarias = [
         "NOME PROCESSO", "ATIVIDADE INÍCIO",
@@ -86,19 +82,16 @@ def processar_para_drawflow(filepath):
             "coluna": 2, "node_id": node_id
         }
         connections.append({
-            "from": inicio_id, "to": node_id,
-            "output_port": "output_1", "input_port": "input_1"  # input_1 = esquerda
+            "from": inicio_id, "to": node_id
         })
         node_id += 1
 
-    # Demais relações do Excel
     for idx, row in df.iterrows():
         atividade_origem = str(row["ATIVIDADE ORIGEM"]).strip()
         procedimento = str(row["PROCEDIMENTO"]).strip()
         destino_raw = row["ATIVIDADE DESTINO"]
         atividade_destino = str(destino_raw).strip() if pd.notna(destino_raw) and str(destino_raw).strip() else None
 
-        # Criar atividades
         if atividade_origem not in atividade_info:
             colunas_atividades = [info["coluna"] for info in atividade_info.values()]
             proxima_coluna = 2
@@ -119,7 +112,6 @@ def processar_para_drawflow(filepath):
         coluna_atividade = atividade_info[atividade_origem]["coluna"]
         atividade_node_id = atividade_info[atividade_origem]["node_id"]
 
-        # Procedimento
         coluna_proc = coluna_atividade + 1
         y_proc = get_next_y(coluna_proc)
         x_proc = 50 + ((coluna_proc - 1) * x_spacing)
@@ -131,14 +123,10 @@ def processar_para_drawflow(filepath):
         proc_node_id = node_id
         node_id += 1
 
-        # Atividade -> Procedimento: saída/entrada na horizontal padrão
         connections.append({
-            "from": atividade_node_id, "to": proc_node_id,
-            "output_port": "output_1",  # direita
-            "input_port": "input_1"     # esquerda do procedimento (padrão)
+            "from": atividade_node_id, "to": proc_node_id
         })
 
-        # Destino (atividade ou FIM, na coluna seguinte)
         coluna_destino = coluna_proc + 1
         x_destino = 50 + ((coluna_destino - 1) * x_spacing)
         if atividade_destino:
@@ -149,14 +137,11 @@ def processar_para_drawflow(filepath):
                     "id": node_id, "name": "Fim", "type": "end",
                     "pos_x": x_destino, "pos_y": y_fim
                 }
-                # procedimento -> fim (horizontal)
                 connections.append({
-                    "from": proc_node_id, "to": node_id,
-                    "output_port": "output_1", "input_port": "input_1"
+                    "from": proc_node_id, "to": node_id
                 })
                 node_id += 1
             else:
-                # Atividade destino, criar se necessário
                 if atividade_destino not in atividade_info:
                     y_dest = get_next_y(coluna_destino)
                     nodes[f"ativ_{atividade_destino}"] = {
@@ -168,18 +153,10 @@ def processar_para_drawflow(filepath):
                     }
                     node_id += 1
                 destino_node_id = atividade_info[atividade_destino]["node_id"]
-                # por padrão, conecta para a esquerda da atividade destino (input_1)
-                # se atividade_destino for coluna_anterior, conecta ao input_3 (direita), permitindo devolução
-                input_port = "input_1"
-                if atividade_info[atividade_destino]["coluna"] < coluna_proc:
-                    input_port = "input_3"  # entrada pela direita nas devoluções
                 connections.append({
-                    "from": proc_node_id, "to": destino_node_id,
-                    "output_port": "output_1",
-                    "input_port": input_port
+                    "from": proc_node_id, "to": destino_node_id
                 })
         else:
-            # Sem destino = cria FIM automático
             y_fim = get_next_y(coluna_destino)
             fim_key = f"fim_auto_{idx}"
             nodes[fim_key] = {
@@ -187,8 +164,7 @@ def processar_para_drawflow(filepath):
                 "pos_x": x_destino, "pos_y": y_fim
             }
             connections.append({
-                "from": proc_node_id, "to": node_id,
-                "output_port": "output_1", "input_port": "input_1"
+                "from": proc_node_id, "to": node_id
             })
             node_id += 1
 
