@@ -62,13 +62,14 @@ def ler_excel_com_encoding(filepath):
 
 def processar_para_drawflow(filepath):
     """
-    Layout em CASCATA CORRETO:
+    Layout em CASCATA - SEM SOBREPOSIÇÃO
+
     Col 1: Início
     Col 2: Atividades
-    Col 3: Procedimentos + Fins
-    Col 4: Atividades destino
-    Col 5: Procedimentos + Fins
-    Col 6: Atividades destino
+    Col 3: Procedimentos
+    Col 4: Atividades + Fins (SEM SOBREPOSIÇÃO)
+    Col 5: Procedimentos
+    Col 6: Atividades + Fins (SEM SOBREPOSIÇÃO)
     ...
     """
     df = ler_excel_com_encoding(filepath)
@@ -91,26 +92,28 @@ def processar_para_drawflow(filepath):
     connections = []
     node_id = 1
 
-    # Espaçamento
-    x_spacing = 280
-    y_spacing = 140
+    # Espaçamento AUMENTADO para evitar sobreposição
+    x_spacing = 300  # Espaço horizontal entre colunas
+    y_spacing = 150  # Espaço vertical entre nós
 
-    # Rastrear Y por coluna para evitar sobreposição
+    # Rastrear Y atual de cada coluna (CRÍTICO para evitar sobreposição)
     coluna_y_atual = {}
 
-    # Rastrear em qual coluna cada atividade está
-    atividade_para_coluna = {}
-    atividade_para_node_id = {}
-
     def get_next_y(coluna):
-        """Retorna próximo Y disponível para uma coluna"""
+        """
+        Retorna próximo Y disponível para uma coluna.
+        GARANTE que nunca haverá sobreposição.
+        """
         if coluna not in coluna_y_atual:
             coluna_y_atual[coluna] = 50
         else:
             coluna_y_atual[coluna] += y_spacing
         return coluna_y_atual[coluna]
 
-    # COLUNA 1: Nó INÍCIO
+    # Rastrear atividades
+    atividade_info = {}  # {nome: {"coluna": X, "node_id": ID}}
+
+    # === COLUNA 1: INÍCIO ===
     y_inicio = get_next_y(1)
     inicio_key = "inicio"
     nodes[inicio_key] = {
@@ -123,24 +126,28 @@ def processar_para_drawflow(filepath):
     inicio_id = node_id
     node_id += 1
 
-    # COLUNA 2: Atividade inicial
+    # === COLUNA 2: ATIVIDADE INICIAL ===
     df_inicio = df[df["ATIVIDADE INÍCIO"].str.strip().str.upper() == "SIM"]
 
     if not df_inicio.empty:
         atividade_inicial = str(df_inicio.iloc[0]["ATIVIDADE ORIGEM"]).strip()
 
         y_ativ = get_next_y(2)
+        x_ativ = 50 + (1 * x_spacing)
+
         ativ_key = f"ativ_{atividade_inicial}"
         nodes[ativ_key] = {
             "id": node_id,
             "name": atividade_inicial,
             "type": "activity",
-            "pos_x": 50 + (1 * x_spacing),  # Coluna 2
+            "pos_x": x_ativ,
             "pos_y": y_ativ
         }
 
-        atividade_para_coluna[atividade_inicial] = 2
-        atividade_para_node_id[atividade_inicial] = node_id
+        atividade_info[atividade_inicial] = {
+            "coluna": 2,
+            "node_id": node_id
+        }
 
         connections.append({
             "from": inicio_id,
@@ -148,42 +155,47 @@ def processar_para_drawflow(filepath):
         })
         node_id += 1
 
-    # Processar todas as linhas
+    # === PROCESSAR TODAS AS LINHAS ===
     for idx, row in df.iterrows():
         atividade_origem = str(row["ATIVIDADE ORIGEM"]).strip()
         procedimento = str(row["PROCEDIMENTO"]).strip()
         destino_raw = row["ATIVIDADE DESTINO"]
         atividade_destino = str(destino_raw).strip() if pd.notna(destino_raw) and str(destino_raw).strip() else None
 
-        # Garantir que atividade origem existe e obter sua coluna
-        if atividade_origem not in atividade_para_coluna:
+        # Garantir que atividade origem existe
+        if atividade_origem not in atividade_info:
             # Criar atividade em coluna PAR (2, 4, 6...)
             # Encontrar próxima coluna par disponível
-            colunas_usadas = list(atividade_para_coluna.values())
-            proxima_coluna_par = 2
-            while proxima_coluna_par in colunas_usadas:
-                proxima_coluna_par += 2
+            colunas_atividades = [info["coluna"] for info in atividade_info.values()]
+            proxima_coluna = 2
+            while proxima_coluna in colunas_atividades:
+                proxima_coluna += 2
 
-            y_ativ = get_next_y(proxima_coluna_par)
+            y_ativ = get_next_y(proxima_coluna)
+            x_ativ = 50 + ((proxima_coluna - 1) * x_spacing)
+
             ativ_key = f"ativ_{atividade_origem}"
             nodes[ativ_key] = {
                 "id": node_id,
                 "name": atividade_origem,
                 "type": "activity",
-                "pos_x": 50 + ((proxima_coluna_par - 1) * x_spacing),
+                "pos_x": x_ativ,
                 "pos_y": y_ativ
             }
 
-            atividade_para_coluna[atividade_origem] = proxima_coluna_par
-            atividade_para_node_id[atividade_origem] = node_id
+            atividade_info[atividade_origem] = {
+                "coluna": proxima_coluna,
+                "node_id": node_id
+            }
             node_id += 1
 
-        coluna_atividade = atividade_para_coluna[atividade_origem]
-        atividade_node_id = atividade_para_node_id[atividade_origem]
+        # Info da atividade origem
+        coluna_atividade = atividade_info[atividade_origem]["coluna"]
+        atividade_node_id = atividade_info[atividade_origem]["node_id"]
 
-        # PROCEDIMENTO: coluna ÍMPAR seguinte (col_ativ + 1)
-        coluna_proc = coluna_atividade + 1  # 3, 5, 7...
-        y_proc = get_next_y(coluna_proc)
+        # === COLUNA ÍMPAR: PROCEDIMENTO ===
+        coluna_proc = coluna_atividade + 1  # 3, 5, 7, 9...
+        y_proc = get_next_y(coluna_proc)  # GARANTE Y único
         x_proc = 50 + ((coluna_proc - 1) * x_spacing)
 
         proc_key = f"proc_{idx}"
@@ -203,18 +215,23 @@ def processar_para_drawflow(filepath):
             "to": proc_node_id
         })
 
-        # DESTINO
+        # === COLUNA PAR: ATIVIDADE DESTINO ou FIM ===
+        coluna_destino = coluna_proc + 1  # 4, 6, 8, 10...
+        x_destino = 50 + ((coluna_destino - 1) * x_spacing)
+
         if atividade_destino:
             # Verificar se é FIM
             if atividade_destino.upper() in ["FIM", "FINAL", "END"]:
-                # FIM: mesma coluna do procedimento (ímpar)
+                # === CÍRCULO FIM ===
+                y_fim = get_next_y(coluna_destino)  # Y ÚNICO - SEM SOBREPOSIÇÃO
+
                 fim_key = f"fim_{idx}"
                 nodes[fim_key] = {
                     "id": node_id,
                     "name": "Fim",
                     "type": "end",
-                    "pos_x": x_proc,  # Mesma coluna do procedimento
-                    "pos_y": y_proc
+                    "pos_x": x_destino,
+                    "pos_y": y_fim
                 }
 
                 connections.append({
@@ -223,13 +240,10 @@ def processar_para_drawflow(filepath):
                 })
                 node_id += 1
             else:
-                # Atividade destino: coluna PAR seguinte (col_proc + 1)
-                coluna_destino = coluna_proc + 1  # 4, 6, 8...
-
-                if atividade_destino not in atividade_para_coluna:
-                    # Criar nova atividade destino
-                    y_destino = get_next_y(coluna_destino)
-                    x_destino = 50 + ((coluna_destino - 1) * x_spacing)
+                # === ATIVIDADE DESTINO ===
+                if atividade_destino not in atividade_info:
+                    # Criar nova atividade
+                    y_dest = get_next_y(coluna_destino)  # Y ÚNICO - SEM SOBREPOSIÇÃO
 
                     destino_key = f"ativ_{atividade_destino}"
                     nodes[destino_key] = {
@@ -237,27 +251,31 @@ def processar_para_drawflow(filepath):
                         "name": atividade_destino,
                         "type": "activity",
                         "pos_x": x_destino,
-                        "pos_y": y_destino
+                        "pos_y": y_dest
                     }
 
-                    atividade_para_coluna[atividade_destino] = coluna_destino
-                    atividade_para_node_id[atividade_destino] = node_id
+                    atividade_info[atividade_destino] = {
+                        "coluna": coluna_destino,
+                        "node_id": node_id
+                    }
                     node_id += 1
 
                 # Conectar procedimento → atividade destino
                 connections.append({
                     "from": proc_node_id,
-                    "to": atividade_para_node_id[atividade_destino]
+                    "to": atividade_info[atividade_destino]["node_id"]
                 })
         else:
-            # Sem destino = FIM automático
+            # === SEM DESTINO = FIM AUTOMÁTICO ===
+            y_fim = get_next_y(coluna_destino)  # Y ÚNICO - SEM SOBREPOSIÇÃO
+
             fim_key = f"fim_auto_{idx}"
             nodes[fim_key] = {
                 "id": node_id,
                 "name": "Fim",
                 "type": "end",
-                "pos_x": x_proc,  # Mesma coluna do procedimento
-                "pos_y": y_proc
+                "pos_x": x_destino,
+                "pos_y": y_fim
             }
 
             connections.append({
